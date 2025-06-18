@@ -1,0 +1,47 @@
+
+
+1. First, in `MainMenu.js`, when you click the Player vs Player button, it:
+   - Sets `AI_ON = false`
+   - Calls `generateMultiplayerMenuLabels()` and `generateMultiplayerMenuButtons()` to show the multiplayer menu
+
+2. Then in `MultiplayerMenu.js`, you get a new menu with two options:
+   - HOST: To create a new game
+   - JOIN: To join an existing game
+
+   If you click HOST:
+   - It calls `socket.emit('hostGame')`
+   - Shows a screen with your room code
+   - Waits for another player to join
+   - Uses `MultiplayerManager.js` to handle the connection
+
+   If you click JOIN:
+   - Shows an input field for the room code
+   - When you enter the code and click continue, it tries to join that room
+   - Uses `MultiplayerManager.js` to handle the connection
+
+3. Once the connection is established (in `MultiplayerManager.js`):
+   - The host shares their screen
+   - The guest receives the screen share
+   - Both players are shown connection status messages
+   - When everything is ready, the game starts
+
+4. After connection is established, players see the betting menu (`BettingMenu.js`):
+   - Shows betting options for both players
+   - Displays the total pot
+   - Has a continue button to start the game
+   - Has a back button to return to main menu
+
+5. The `Menu.js` file contains the base menu functionality that all these menus inherit from, handling things like:
+   - Drawing the menu
+   - Handling input
+   - Managing the menu loop
+   - Managing sound
+
+So the sequence of files involved is:
+1. `MainMenu.js` → Initial click
+2. `MultiplayerMenu.js` → Host/Join options
+3. `MultiplayerManager.js` → Connection handling
+4. `BettingMenu.js` → Betting setup
+5. `Menu.js` → Base menu functionality used by all menus
+
+Would you like me to explain any particular part of this flow in more detail?

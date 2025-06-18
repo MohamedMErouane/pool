@@ -5,6 +5,8 @@
     <title>Classic Pool Game</title>
     <link rel="stylesheet" type="text/css" href="css/game-layout.css"/>
     <link rel="shortcut icon" type="image/png" href="assets/sprites/favicon.png"/>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
     <script src="script/lib/LAB.min.js"></script>
     <script>
         $LAB
@@ -40,6 +42,63 @@
 <body style = "background-color:black">
 <div id="gameArea">
     <canvas id="screen" width="2000" height="1000"></canvas>
+    <button onclick="startMultiplayer()">Multiplayer</button>
+
 </div>
 </body>
+<script>
+  const socket = io('http://localhost:3000'); // Match your backend port
+
+  let mySocketId = null;
+  let myTurn = false;
+  let currentRoomCode = null;
+
+  socket.on('connect', () => {
+    mySocketId = socket.id;
+    console.log("Connected:", mySocketId);
+  });
+
+  function startMultiplayer() {
+    socket.emit('findMatch');
+    alert("Looking for opponent...");
+  }
+
+  socket.on('waitingForOpponent', () => {
+    alert("Waiting for opponent...");
+  });
+
+  socket.on('startGame', ({ roomCode, firstTurn }) => {
+    const multiArea = document.getElementById('multiplayer-area');
+    if (multiArea) multiArea.style.display = 'none';
+
+    AI_ON = false;
+    Game.mainMenu.active = false;
+    GAME_STOPPED = false;
+    setTimeout(Game.startNewGame, 200);
+
+    if (Game.mainMenu.sound) sounds.fadeOut(Game.mainMenu.sound);
+
+    myTurn = (firstTurn === mySocketId);
+    currentRoomCode = roomCode;
+    updateTurnUI();
+  });
+
+  socket.on('opponentShot', ({ shotData, nextTurn }) => {
+    myTurn = (nextTurn === mySocketId);
+    updateTurnUI();
+    // TODO: Apply shotData to update your game state
+  });
+
+  function onPlayerShot(shotData) {
+    if (!myTurn || !currentRoomCode) return;
+    socket.emit('playerShot', { roomCode: currentRoomCode, shotData });
+    myTurn = false;
+    updateTurnUI();
+  }
+
+  function updateTurnUI() {
+    const status = document.getElementById('turn-indicator');
+    if (status) status.textContent = myTurn ? "Your Turn" : "Opponent's Turn";
+  }
+</script>
 </html>

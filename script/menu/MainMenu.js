@@ -11,15 +11,7 @@ function generateMainMenuLabels(headerText){
             "left",
             "Bookman",
             "100px"
-        ),
-        new Label(
-            "© 2018 Chen Shmilovich", 
-            new Vector2(1250,700),
-            Vector2.zero,
-            "white",
-            "left",
-            "Bookman",
-            "20px"
+        
         )
     ];
 
