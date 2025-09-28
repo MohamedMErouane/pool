@@ -1,5 +1,6 @@
 html, body {
     margin: 0;
+    font-family: 'Arial', sans-serif;
 }
 
 /*#screen{
@@ -9,3 +10,428 @@ html, body {
     margin-right: auto;
     display: block;
 }*/
+
+/* Rewards Dashboard Styles */
+.rewards-dashboard {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    width: 400px;
+    max-height: 80vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #4a9eff;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    color: white;
+    z-index: 1000;
+    display: none;
+    overflow-y: auto;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: rgba(74, 158, 255, 0.1);
+    border-bottom: 1px solid #4a9eff;
+    border-radius: 13px 13px 0 0;
+}
+
+.dashboard-header h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #4a9eff;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: #ff4757;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
+}
+
+.close-btn:hover {
+    background-color: rgba(255, 71, 87, 0.2);
+}
+
+.dashboard-content {
+    padding: 20px;
+}
+
+.reward-section {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 1px solid rgba(74, 158, 255, 0.3);
+}
+
+.reward-section h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    color: #4a9eff;
+}
+
+/* Daily Check-in Styles */
+.checkin-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.streak-info {
+    text-align: center;
+}
+
+.streak-number {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffa502;
+}
+
+.streak-label {
+    font-size: 12px;
+    color: #ccc;
+}
+
+.checkin-btn {
+    background: linear-gradient(45deg, #4a9eff, #0078ff);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.checkin-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(74, 158, 255, 0.4);
+}
+
+.already-checked {
+    color: #2ed573;
+    font-weight: bold;
+}
+
+.total-mined {
+    text-align: center;
+    padding: 10px;
+    background: rgba(42, 213, 115, 0.1);
+    border-radius: 8px;
+}
+
+.mined-amount {
+    display: block;
+    font-size: 20px;
+    font-weight: bold;
+    color: #2ed573;
+}
+
+.mined-label {
+    font-size: 12px;
+    color: #ccc;
+}
+
+/* Heat Meter Styles */
+.heat-display {
+    margin-bottom: 10px;
+}
+
+.heat-bar {
+    position: relative;
+    height: 25px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 8px;
+}
+
+.heat-fill {
+    height: 100%;
+    transition: width 0.5s ease, background-color 0.5s ease;
+    border-radius: 12px;
+}
+
+.heat-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 12px;
+    font-weight: bold;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.heat-level {
+    text-align: center;
+    font-weight: bold;
+    color: #ffa502;
+}
+
+.next-reward {
+    font-size: 12px;
+    color: #ccc;
+    text-align: center;
+}
+
+.max-heat {
+    font-size: 12px;
+    color: #ffa502;
+    text-align: center;
+    font-weight: bold;
+}
+
+/* Mini-Games Styles */
+.minigame-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.minigame-card {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+    border: 1px solid rgba(74, 158, 255, 0.3);
+    transition: transform 0.2s;
+}
+
+.minigame-card:hover {
+    transform: translateY(-2px);
+}
+
+.minigame-card.completed {
+    border-color: #2ed573;
+    background: rgba(46, 213, 115, 0.1);
+}
+
+.minigame-card h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #4a9eff;
+}
+
+.best-score {
+    font-size: 12px;
+    color: #ffa502;
+    margin-bottom: 8px;
+}
+
+.play-btn {
+    background: linear-gradient(45deg, #ff6b35, #ff8c42);
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.play-btn:hover {
+    transform: scale(1.05);
+}
+
+.completed-text {
+    color: #2ed573;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+/* Wallet Styles */
+.wallet-info {
+    text-align: center;
+}
+
+.connected-wallet {
+    padding: 10px;
+}
+
+.wallet-address {
+    font-family: monospace;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    color: #4a9eff;
+}
+
+.wallet-balance, .pending-rewards {
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.pending-rewards {
+    color: #ffa502;
+    font-weight: bold;
+}
+
+.wallet-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.connect-btn, .claim-btn {
+    background: linear-gradient(45deg, #2ed573, #17c0eb);
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.connect-btn:hover, .claim-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(46, 213, 115, 0.4);
+}
+
+.disconnect-btn {
+    background: linear-gradient(45deg, #ff4757, #ff3742);
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: white;
+    font-size: 12px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.disconnect-btn:hover {
+    transform: scale(1.05);
+}
+
+.claim-info {
+    font-size: 12px;
+    color: #ccc;
+    margin-top: 5px;
+}
+
+.disconnected-wallet p {
+    margin-bottom: 15px;
+    color: #ccc;
+}
+
+.wallet-install-prompt {
+    text-align: center;
+    padding: 20px;
+    background: rgba(156, 39, 176, 0.1);
+    border-radius: 10px;
+    border: 1px solid #9c27b0;
+    margin-bottom: 15px;
+}
+
+.wallet-install-prompt h4 {
+    margin: 0 0 10px 0;
+    color: #9c27b0;
+    font-size: 16px;
+}
+
+.install-btn {
+    display: inline-block;
+    background: linear-gradient(45deg, #9c27b0, #673ab7);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: bold;
+    margin: 10px 0;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.install-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(156, 39, 176, 0.4);
+    color: white;
+    text-decoration: none;
+}
+
+.install-note {
+    font-size: 12px;
+    color: #ccc;
+    margin: 10px 0 0 0;
+}
+
+/* Rewards Button in Main UI */
+.rewards-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(45deg, #4a9eff, #0078ff);
+    border: none;
+    padding: 12px 20px;
+    border-radius: 25px;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 999;
+    box-shadow: 0 4px 15px rgba(74, 158, 255, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.rewards-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(74, 158, 255, 0.4);
+}
+
+/* Notifications */
+.notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100px);
+    background: rgba(26, 26, 46, 0.95);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    z-index: 9999;
+    max-width: 400px;
+    text-align: center;
+    border: 1px solid;
+    transition: transform 0.3s ease;
+}
+
+.notification.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+.notification-success {
+    border-color: #2ed573;
+    background: rgba(46, 213, 115, 0.2);
+}
+
+.notification-error {
+    border-color: #ff4757;
+    background: rgba(255, 71, 87, 0.2);
+}
+
+.notification-warning {
+    border-color: #ffa502;
+    background: rgba(255, 165, 2, 0.2);
+}
+
+.notification-info {
+    border-color: #4a9eff;
+    background: rgba(74, 158, 255, 0.2);
+}

@@ -84,6 +84,12 @@ Ball.prototype.updatePosition = function(delta){
         }
 		this.position = newPos;
         this.inHole = true;
+        
+        // Track ball potted for mining rewards
+        if (typeof Game.gameWorld !== 'undefined' && typeof Game.gameWorld.trackBallPotted === 'function') {
+            Game.gameWorld.trackBallPotted(this);
+        }
+        
         setTimeout(function(){ball.visible=false;ball.velocity = Vector2.zero;}, 100);
         Game.policy.handleBallInHole(this);
 		return;

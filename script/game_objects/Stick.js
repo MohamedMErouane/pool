@@ -61,6 +61,13 @@ Stick.prototype.shoot = function(power, rotation){
     strike.volume = (this.power/(10))<1?(this.power/(10)):1;
     strike.play();
   }
+  
+  // Track shot for mining rewards - calculate accuracy based on power consistency
+  var accuracy = Math.max(0, 1 - Math.abs(power - 5) / 10); // Best accuracy around power 5
+  if (typeof Game.gameWorld !== 'undefined' && typeof Game.gameWorld.trackShotTaken === 'function') {
+    Game.gameWorld.trackShotTaken(power, accuracy);
+  }
+  
   Game.policy.turnPlayed = true;
   this.shooting = true;
   this.origin = this.shotOrigin.copy();

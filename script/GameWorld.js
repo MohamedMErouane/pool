@@ -231,3 +231,84 @@ GameWorld.prototype.initiateState = function(balls){
     this.stick.position = this.whiteBall.position;
 }
 
+// Mining and Rewards Integration
+GameWorld.prototype.trackShotTaken = function(shotPower, accuracy) {
+    // Add heat for taking a shot
+    GlobalHeatMeter.addHeatForAction('shot_taken');
+    
+    // Calculate accuracy bonus (closer to 1.0 = better accuracy)
+    const normalizedAccuracy = Math.min(accuracy, 1.0);
+    
+    // Mine tokens based on shot performance
+    const miningResult = DailyReward.getCueShootingMining(normalizedAccuracy, 0);
+    
+    // Update pending rewards
+    if (miningResult.mined > 0) {
+        SolanaWalletManager.addPendingReward(miningResult.mined, "Cue Shot Mining");
+    }
+    
+    return miningResult;
+};
+
+GameWorld.prototype.trackBallPotted = function(ball) {
+    // Add heat for potting a ball
+    GlobalHeatMeter.addHeatForAction('ball_potted');
+    
+    // Mine tokens for successful pot
+    const pottingReward = 2; // Base reward for potting a ball
+    const miningResult = DailyReward.getCueShootingMining(0, 1);
+    
+    // Add to pending rewards
+    SolanaWalletManager.addPendingReward(pottingReward, "Ball Potted");
+    
+    // Show mining notification
+    rewardsDashboard.showNotification(`🎱 Ball potted! +${pottingReward} tokens mined`, 'success');
+    
+    return miningResult;
+};
+
+GameWorld.prototype.trackGameWon = function(winner) {
+    // Add heat for winning game
+    GlobalHeatMeter.addHeatForAction('game_won');
+    
+    // Award win bonus
+    const winBonus = 10;
+    SolanaWalletManager.addPendingReward(winBonus, "Game Victory");
+    
+    // Show win notification
+    rewardsDashboard.showNotification(`🏆 Game won! +${winBonus} tokens earned!`, 'success');
+    
+    return winBonus;
+};
+
+GameWorld.prototype.trackBreakShot = function(ballsSpread, ballsPotted) {
+    // Add heat for break shot
+    GlobalHeatMeter.addHeatForAction('break_shot');
+    
+    // Calculate break quality and reward
+    const breakQuality = (ballsSpread / 100) + (ballsPotted * 0.2);
+    const breakReward = Math.floor(breakQuality * 3);
+    
+    if (breakReward > 0) {
+        SolanaWalletManager.addPendingReward(breakReward, "Break Shot");
+        rewardsDashboard.showNotification(`🎯 Great break! +${breakReward} tokens`, 'success');
+    }
+    
+    return breakReward;
+};
+
+GameWorld.prototype.trackPowerShot = function(power, success) {
+    if (power >= 0.6 && success) {
+        // Add heat for successful power shot
+        GlobalHeatMeter.addHeatForAction('power_shot');
+        
+        const powerReward = Math.floor(power * 5);
+        SolanaWalletManager.addPendingReward(powerReward, "Power Shot");
+        rewardsDashboard.showNotification(`⚡ Power shot! +${powerReward} tokens`, 'success');
+        
+        return powerReward;
+    }
+    
+    return 0;
+};
+

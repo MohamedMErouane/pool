@@ -1,4 +1,4 @@
-function generateBettingMenuLabels() {
+  function generateBettingMenuLabels() {
     return [
         new Label(
             "Place Your Bets", 

@@ -1,0 +1,71 @@
+{
+  "mvp": {
+    "version": "1.0.0",
+    "features": {
+      "dailyRewards": {
+        "enabled": true,
+        "baseReward": 10,
+        "maxStreakBonus": 2.0,
+        "miningRates": {
+          "shotAccuracy": 0.5,
+          "ballPotting": 2,
+          "gameVictory": 10
+        }
+      },
+      "heatMeter": {
+        "enabled": true,
+        "maxHeat": 100,
+        "decayRate": 0.1,
+        "thresholds": [25, 50, 75, 100],
+        "rewards": {
+          "25": { "tokens": 5, "item": "Bronze Cue Skin" },
+          "50": { "tokens": 15, "item": "Silver Cue Skin" },
+          "75": { "tokens": 30, "item": "Gold Cue Skin" },
+          "100": { "tokens": 50, "item": "Diamond Cue Skin" }
+        }
+      },
+      "miniGames": {
+        "enabled": true,
+        "dailyBreak": {
+          "attempts": 3,
+          "baseReward": 5,
+          "recordBonus": 20
+        },
+        "powerShot": {
+          "levels": 5,
+          "baseReward": 10,
+          "recordBonus": 30,
+          "powerThreshold": 0.6
+        }
+      },
+      "solanaWallet": {
+        "enabled": true,
+        "developmentMode": false,
+        "minimumClaim": 10,
+        "network": "devnet",
+        "realWallet": true,
+        "requiredWallet": "phantom"
+      }
+    },
+    "ui": {
+      "dashboard": {
+        "position": "top-right",
+        "autoUpdate": 30000,
+        "notifications": true
+      },
+      "heatMeter": {
+        "miniDisplay": true,
+        "updateInterval": 10000
+      }
+    },
+    "storage": {
+      "development": "localStorage",
+      "production": "solana+localStorage"
+    },
+    "analytics": {
+      "trackGameplay": true,
+      "trackMining": true,
+      "trackWallet": true
+    }
+  }
+}
