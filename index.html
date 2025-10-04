@@ -5,24 +5,7 @@
     <title>8Ball Arena</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="css/game-layout.css"/>
-    <link rel="shortcut icon" type="image/png" href="as        function startDailyBreak() {
-            console.log('=== STARTING POOL GAME (DAILY BREAK) ===');
-            
-            // Show the game canvas
-            showGameInterface();
-            
-            // Start the basic pool game
-            window.DISPLAY = true;
-            window.GAME_STOPPED = false;
-            
-            if (Game && Game.startNewGame) {
-                Game.startNewGame();
-                console.log('✅ Pool game started - make your break shot!');
-            }
-            
-            // Add back button to return to main menu
-            addBackButton();
-        }vicon.png"/>
+    <link rel="shortcut icon" type="image/png" href="assets/sprites/favicon.png"/>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <!-- Solana Web3.js for real wallet integration -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
@@ -366,18 +349,26 @@
                 completed: false
             };
             
+            console.log('Daily Break mini-game set:', currentMiniGame);
+            
             // Show game canvas container (same as test canvas)
             const gameCanvasContainer = document.getElementById('game-canvas-container');
+            console.log('Game canvas container found:', !!gameCanvasContainer);
+            
             if (gameCanvasContainer) {
                 gameCanvasContainer.style.display = 'flex';
-                console.log('✅ Game canvas container shown');
+                console.log('✅ Game canvas container shown for Daily Break');
+            } else {
+                console.error('❌ Game canvas container not found!');
             }
             
             // Start the original pool game
+            console.log('About to start original game for Daily Break...');
             startOriginalGame();
             
             // Show objective
             showMiniGameObjective('Daily Break Challenge', 'Make your break shot! You get rewards based on how many balls you spread.');
+            console.log('Daily Break setup complete');
         }
 
         function startPointDouble() {
@@ -390,22 +381,41 @@
                 completed: false
             };
             
+            console.log('Point Double mini-game set:', currentMiniGame);
+            
             // Show game canvas container (same as test canvas)
             const gameCanvasContainer = document.getElementById('game-canvas-container');
+            console.log('Game canvas container found:', !!gameCanvasContainer);
+            
             if (gameCanvasContainer) {
                 gameCanvasContainer.style.display = 'flex';
-                console.log('✅ Game canvas container shown');
+                console.log('✅ Game canvas container shown for Point Double');
+            } else {
+                console.error('❌ Game canvas container not found!');
             }
             
             // Start the original pool game
+            console.log('About to start original game for Point Double...');
             startOriginalGame();
             
             // Show objective
             showMiniGameObjective('Point Double Challenge', 'Pot any ball in one shot for DOUBLE rewards!');
+            console.log('Point Double setup complete');
         }
+
+        // Track if game is already running
+        let gameIsRunning = false;
 
         function startOriginalGame() {
             console.log('=== STARTING ORIGINAL GAME ===');
+            
+            // Prevent multiple game starts
+            if (gameIsRunning) {
+                console.log('⚠️ Game already running, skipping start');
+                return;
+            }
+            
+            gameIsRunning = true;
             
             // Start the pool game properly
             window.DISPLAY = true;
@@ -414,6 +424,9 @@
             // Reset mini-game tracking
             ballsPottedInShot = 0;
             shotTaken = false;
+            
+            console.log('DISPLAY set to:', window.DISPLAY);
+            console.log('GAME_STOPPED set to:', window.GAME_STOPPED);
             
             if (Game) {
                 console.log('Game object available');
@@ -547,6 +560,9 @@
             currentMiniGame = null;
             shotTaken = false;
             ballsPottedInShot = 0;
+            gameIsRunning = false; // Reset game running flag
+            
+            console.log('Returning to main menu - game reset');
             
             // Hide game interface and show mobile interface
             const gameCanvasContainer = document.getElementById('game-canvas-container');
@@ -614,59 +630,6 @@
         
         // Monitor mini-game progress continuously
         setInterval(checkMiniGameProgress, 100);
-
-        function startDailyBreak() {
-            console.log('=== STARTING POOL GAME (DAILY BREAK) ===');
-            
-            // Show the game canvas
-            showGameInterface();
-            
-            // Start the basic pool game
-            window.DISPLAY = true;
-            window.GAME_STOPPED = false;
-            
-            if (Game && Game.startNewGame) {
-                Game.startNewGame();
-                console.log('✅ Pool game started - make your break shot!');
-            }
-            
-            // Add back button to return to main menu
-            addBackButton();
-        }
-
-        function startPointDouble() {
-            console.log('=== STARTING POINT DOUBLE ===');
-            
-            // Show the game canvas
-            showGameInterface();
-            
-            // Start the pool game properly
-            window.DISPLAY = true;
-            window.GAME_STOPPED = false;
-            
-            if (Game) {
-                // Make sure game world is initialized
-                if (!Game.gameWorld) {
-                    console.log('Initializing game world...');
-                    Game.initialize();
-                }
-                
-                // Start new game
-                if (Game.startNewGame) {
-                    Game.startNewGame();
-                    console.log('✅ Point Double started!');
-                    
-                    // Force the main loop to start
-                    if (Game.mainLoop) {
-                        requestAnimationFrame(Game.mainLoop);
-                        console.log('✅ Game loop started');
-                    }
-                }
-            }
-            
-            // Add back button to return to main menu
-            addBackButton();
-        }
 
         function showModal(title, message) {
             alert(title + "\n\n" + message);
