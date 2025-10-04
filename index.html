@@ -2,9 +2,27 @@
 <html>
 <head>
     <meta http-equiv="content-type" content="text/html; charset=UTF8">
-    <title>Classic Pool Game</title>
+    <title>8Ball Arena</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" type="text/css" href="css/game-layout.css"/>
-    <link rel="shortcut icon" type="image/png" href="assets/sprites/favicon.png"/>
+    <link rel="shortcut icon" type="image/png" href="as        function startDailyBreak() {
+            console.log('=== STARTING POOL GAME (DAILY BREAK) ===');
+            
+            // Show the game canvas
+            showGameInterface();
+            
+            // Start the basic pool game
+            window.DISPLAY = true;
+            window.GAME_STOPPED = false;
+            
+            if (Game && Game.startNewGame) {
+                Game.startNewGame();
+                console.log('✅ Pool game started - make your break shot!');
+            }
+            
+            // Add back button to return to main menu
+            addBackButton();
+        }vicon.png"/>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <!-- Solana Web3.js for real wallet integration -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
@@ -107,8 +125,32 @@
                     Game.gameWorld.applyShot(shotData);
                 });
 
-                // Start the game
+                // Start the game system (but don't start playing)
                 Game.start('gameArea', 'screen', 1500, 825);
+                
+                // Initialize but don't auto-start the game
+                setTimeout(() => {
+                    console.log('=== INITIALIZING GAME SYSTEM ===');
+                    
+                    // Set initial variables but don't start game yet
+                    window.DISPLAY = true;
+                    window.GAME_STOPPED = true; // Keep stopped until button is clicked
+                    
+                    console.log('✅ Game system initialized, waiting for button click');
+                }, 1000);
+                
+                                
+                // Initialize wallet manager after game starts
+                setTimeout(() => {
+                    console.log('=== INITIALIZING WALLET SYSTEM ===');
+                    
+                    if (typeof SolanaWallet !== 'undefined') {
+                        Game.walletManager = new SolanaWallet();
+                        console.log('✅ Wallet manager initialized');
+                    }
+                    
+                    console.log('=== WALLET INITIALIZATION COMPLETE ===');
+                }, 1500);
             });
 
         function startMultiplayer() {
@@ -146,44 +188,844 @@
     </script>
 </head>
 
-<body style="background-color:black">
-    <!-- Rewards Dashboard Button -->
-    <button class="rewards-btn" onclick="rewardsDashboard.toggle()">🎯 Rewards</button>
-    
-    <!-- Mini Heat Meter Display -->
-    <div class="mini-heat-meter" id="mini-heat-meter">
-        <div class="mini-heat-display">
-            <span class="mini-heat-text">Heat</span>
-            <div class="mini-heat-bar">
-                <div class="mini-heat-fill" style="width: 0%; background-color: #9E9E9E;"></div>
+<body>
+    <!-- Mobile Header -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-triangle">8</div>
+            <span class="app-title">8Ball Arena</span>
+        </div>
+        <div class="points-display">1,000 P</div>
+    </div>
+
+    <!-- Heat Meter -->
+    <div class="heat-meter-container">
+        <span>Heat Meter</span>
+        <div class="heat-meter-bar">
+            <div class="heat-meter-fill" id="heat-meter-fill"></div>
+        </div>
+        <span>🔥</span>
+    </div>
+
+    <!-- Main Mobile Interface -->
+    <div class="main-container" id="mobile-interface">
+        <!-- Arena Title -->
+        <div class="arena-title">
+            <div class="arena-logo">8</div>
+            <h1>Billiards Hub "8Ball Arena"</h1>
+            <p class="arena-subtitle">The No.1 Global Billiards Blockchain Platform!</p>
+        </div>
+
+        <!-- Connect Wallet Button -->
+        <button class="connect-wallet-btn" id="connect-wallet-btn" onclick="connectWallet()">
+            CONNECT WALLET
+        </button>
+        
+        <!-- Test Canvas Button -->
+        <button class="connect-wallet-btn" onclick="testCanvas()" style="background: #ff4444; margin-top: 10px;">
+            TEST CANVAS (Click if black screen)
+        </button>
+
+        <!-- Mini Games Section -->
+        <div class="mini-games-section">
+            <h2 class="mini-games-title">8Ball Arena Mini Games</h2>
+            
+            <button class="mini-game-btn" onclick="startAimShoot()">
+                "Aim & Shoot"
+            </button>
+            
+            <button class="mini-game-btn" onclick="startDailyBreak()">
+                Daily break
+            </button>
+            
+            <button class="mini-game-btn" onclick="startPointDouble()">
+                Point Double Up X 2
+            </button>
+        </div>
+
+        <!-- Game Canvas Container (shows when playing) -->
+        <div class="game-canvas-container" id="game-canvas-container" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 9999; justify-content: center; align-items: center;">
+            <div id="gameArea" style="position: relative;">
+                <canvas id="screen" width="1500" height="825" style="background: #0f5d0f; border: 4px solid #8B4513; border-radius: 15px; max-width: 95vw; max-height: 90vh;"></canvas>
             </div>
         </div>
     </div>
-    
-    <div id="gameArea">
-        <canvas id="screen" width="2000" height="1000"></canvas>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="showHome()">
+            <div class="nav-icon">🏠</div>
+            <span>HOME</span>
+        </div>
+        <div class="nav-item" onclick="showSwap()">
+            <div class="nav-icon">💱</div>
+            <span>SWAP</span>
+        </div>
+        <div class="nav-item" onclick="showGame()">
+            <div class="nav-icon">🎮</div>
+            <span>Game</span>
+        </div>
+        <div class="nav-item" onclick="showReferral()">
+            <div class="nav-icon">👥</div>
+            <span>Referral</span>
+        </div>
+        <div class="nav-item" onclick="showCheckin()">
+            <div class="nav-icon">✓</div>
+            <span>Check-In</span>
+        </div>
+    </div>
+
+    <!-- Legacy Game Canvas (for original game) -->
+    <div id="legacy-game" style="display: none;">
+        <button class="rewards-btn" onclick="rewardsDashboard.toggle()">🎯 Rewards</button>
+        
+        <div class="mini-heat-meter" id="mini-heat-meter">
+            <div class="mini-heat-display">
+                <span class="mini-heat-text">Heat</span>
+                <div class="mini-heat-bar">
+                    <div class="mini-heat-fill" style="width: 0%; background-color: #9E9E9E;"></div>
+                </div>
+        </div>
     </div>
     
     <script>
-        // Initialize mini heat meter update
-        function updateMiniHeatMeter() {
-            const heatStats = GlobalHeatMeter.getStats();
-            const miniMeter = document.getElementById('mini-heat-meter');
-            if (miniMeter) {
-                const fill = miniMeter.querySelector('.mini-heat-fill');
-                const text = miniMeter.querySelector('.mini-heat-text');
+        // Mobile Interface Functions
+        async function connectWallet() {
+            try {
+                // Wait for wallet system to load
+                if (typeof Game !== 'undefined' && Game.walletManager) {
+                    const result = await Game.walletManager.connectWallet();
+                    if (result.success) {
+                        updateWalletButton(true, result.address);
+                        showModal("Wallet Connected!", `Successfully connected to Phantom wallet!\nAddress: ${result.address.slice(0,8)}...${result.address.slice(-8)}`);
+                    } else {
+                        showModal("Connection Failed", result.message || "Failed to connect wallet");
+                    }
+                } else if (window.solana && window.solana.isPhantom) {
+                    // Direct Phantom connection if game system not ready
+                    const response = await window.solana.connect();
+                    const address = response.publicKey.toString();
+                    updateWalletButton(true, address);
+                    showModal("Wallet Connected!", `Successfully connected to Phantom wallet!\nAddress: ${address.slice(0,8)}...${address.slice(-8)}`);
+                } else {
+                    showModal("Phantom Wallet Required", "Please install Phantom wallet from https://phantom.app/ to connect your wallet.");
+                }
+            } catch (error) {
+                console.error('Wallet connection error:', error);
+                showModal("Error", "Error connecting wallet: " + error.message);
+            }
+        }
+
+        function updateWalletButton(connected, publicKey = null) {
+            const btn = document.getElementById('connect-wallet-btn');
+            if (connected && publicKey) {
+                btn.textContent = `Connected: ${publicKey.slice(0,8)}...`;
+                btn.style.background = 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)';
+            } else {
+                btn.textContent = 'CONNECT WALLET';
+                btn.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+            }
+        }
+
+        // Mini-game state tracking
+        let currentMiniGame = null;
+        let ballsPottedInShot = 0;
+        let shotTaken = false;
+
+        function startAimShoot() {
+            console.log('=== STARTING AIM & SHOOT MINI-GAME ===');
+            
+            // Set mini-game mode
+            currentMiniGame = {
+                type: 'aimShoot',
+                objective: 'Pot one ball to win!',
+                completed: false
+            };
+            
+            // Show game canvas container (same as test canvas)
+            const gameCanvasContainer = document.getElementById('game-canvas-container');
+            if (gameCanvasContainer) {
+                gameCanvasContainer.style.display = 'flex';
+                console.log('✅ Game canvas container shown');
+            }
+            
+            // Start the original pool game
+            startOriginalGame();
+            
+            // Show objective
+            showMiniGameObjective('Aim & Shoot Challenge', 'Pot any ball in one shot to win!');
+        }
+
+        function startDailyBreak() {
+            console.log('=== STARTING DAILY BREAK MINI-GAME ===');
+            
+            // Set mini-game mode
+            currentMiniGame = {
+                type: 'dailyBreak',
+                objective: 'Make the break shot!',
+                completed: false
+            };
+            
+            // Show game canvas container (same as test canvas)
+            const gameCanvasContainer = document.getElementById('game-canvas-container');
+            if (gameCanvasContainer) {
+                gameCanvasContainer.style.display = 'flex';
+                console.log('✅ Game canvas container shown');
+            }
+            
+            // Start the original pool game
+            startOriginalGame();
+            
+            // Show objective
+            showMiniGameObjective('Daily Break Challenge', 'Make your break shot! You get rewards based on how many balls you spread.');
+        }
+
+        function startPointDouble() {
+            console.log('=== STARTING POINT DOUBLE MINI-GAME ===');
+            
+            // Set mini-game mode
+            currentMiniGame = {
+                type: 'pointDouble',
+                objective: 'Pot one ball for double points!',
+                completed: false
+            };
+            
+            // Show game canvas container (same as test canvas)
+            const gameCanvasContainer = document.getElementById('game-canvas-container');
+            if (gameCanvasContainer) {
+                gameCanvasContainer.style.display = 'flex';
+                console.log('✅ Game canvas container shown');
+            }
+            
+            // Start the original pool game
+            startOriginalGame();
+            
+            // Show objective
+            showMiniGameObjective('Point Double Challenge', 'Pot any ball in one shot for DOUBLE rewards!');
+        }
+
+        function startOriginalGame() {
+            console.log('=== STARTING ORIGINAL GAME ===');
+            
+            // Start the pool game properly
+            window.DISPLAY = true;
+            window.GAME_STOPPED = false;
+            
+            // Reset mini-game tracking
+            ballsPottedInShot = 0;
+            shotTaken = false;
+            
+            if (Game) {
+                console.log('Game object available');
                 
-                fill.style.width = heatStats.progress + '%';
-                fill.style.backgroundColor = heatStats.color;
-                text.textContent = `Heat ${heatStats.currentHeat.toFixed(0)}`;
+                // Make sure game world is initialized
+                if (!Game.gameWorld) {
+                    console.log('Initializing game world...');
+                    Game.initialize();
+                }
+                
+                // Start new game
+                if (Game.startNewGame) {
+                    Game.startNewGame();
+                    console.log('✅ Original pool game started!');
+                    
+                    // Force the main loop to start
+                    if (Game.mainLoop) {
+                        requestAnimationFrame(Game.mainLoop);
+                        console.log('✅ Game loop started');
+                    }
+                } else {
+                    console.error('❌ Game.startNewGame not available');
+                }
+            } else {
+                console.error('❌ Game object not available');
+            }
+            
+            // Add back button to return to main menu
+            addBackButton();
+        }
+
+        // Mini-game monitoring system
+        function checkMiniGameProgress() {
+            if (!currentMiniGame || currentMiniGame.completed) return;
+            
+            // Check if a shot was taken (when stick stops shooting)
+            if (Game && Game.gameWorld && Game.gameWorld.stick) {
+                const stick = Game.gameWorld.stick;
+                
+                // Detect when shot is taken
+                if (stick.shooting && !shotTaken) {
+                    shotTaken = true;
+                    ballsPottedInShot = 0;
+                    console.log('Shot taken in mini-game:', currentMiniGame.type);
+                }
+                
+                // Check when balls stop moving after shot
+                if (shotTaken && !stick.shooting && !Game.gameWorld.ballsMoving()) {
+                    handleMiniGameCompletion();
+                }
             }
         }
         
-        // Update mini heat meter every 10 seconds
-        setInterval(updateMiniHeatMeter, 10000);
+        function handleMiniGameCompletion() {
+            if (currentMiniGame.completed) return;
+            
+            // Count potted balls
+            let pottedBalls = 0;
+            if (Game && Game.gameWorld && Game.gameWorld.balls) {
+                for (let ball of Game.gameWorld.balls) {
+                    if (ball.inHole) {
+                        pottedBalls++;
+                    }
+                }
+            }
+            
+            currentMiniGame.completed = true;
+            
+            switch (currentMiniGame.type) {
+                case 'dailyBreak':
+                    handleDailyBreakComplete(pottedBalls);
+                    break;
+                case 'aimShoot':
+                    handleAimShootComplete(pottedBalls);
+                    break;
+                case 'pointDouble':
+                    handlePointDoubleComplete(pottedBalls);
+                    break;
+            }
+        }
         
-        // Initial update after 2 seconds to ensure scripts are loaded
-        setTimeout(updateMiniHeatMeter, 2000);
+        function handleDailyBreakComplete(pottedBalls) {
+            let message = `Break shot completed!\\n`;
+            message += `Balls potted: ${pottedBalls}\\n`;
+            
+            if (pottedBalls > 0) {
+                message += `Excellent break! You earned ${pottedBalls * 10} bonus points!`;
+            } else {
+                message += `Good break! You earned 5 participation points.`;
+            }
+            
+            setTimeout(() => {
+                alert(message);
+                returnToMainMenu();
+            }, 1000);
+        }
+        
+        function handleAimShootComplete(pottedBalls) {
+            let message = `Aim & Shoot completed!\\n`;
+            
+            if (pottedBalls > 0) {
+                message += `SUCCESS! You potted ${pottedBalls} ball(s)!\\nYou earned ${pottedBalls * 20} points!`;
+            } else {
+                message += `No balls potted this time. Better luck next shot!\\nYou earned 2 participation points.`;
+            }
+            
+            setTimeout(() => {
+                alert(message);
+                returnToMainMenu();
+            }, 1000);
+        }
+        
+        function handlePointDoubleComplete(pottedBalls) {
+            let message = `Point Double completed!\\n`;
+            
+            if (pottedBalls > 0) {
+                const doublePoints = pottedBalls * 40; // Double the normal points
+                message += `AMAZING! You potted ${pottedBalls} ball(s)!\\nDouble points: ${doublePoints} points!`;
+            } else {
+                message += `No balls potted this time. Try again for double rewards!\\nYou earned 2 participation points.`;
+            }
+            
+            setTimeout(() => {
+                alert(message);
+                returnToMainMenu();
+            }, 1000);
+        }
+        
+        function returnToMainMenu() {
+            // Reset mini-game state
+            currentMiniGame = null;
+            shotTaken = false;
+            ballsPottedInShot = 0;
+            
+            // Hide game interface and show mobile interface
+            const gameCanvasContainer = document.getElementById('game-canvas-container');
+            const mobileInterface = document.getElementById('mobile-interface');
+            const bottomNav = document.querySelector('.bottom-nav');
+            const header = document.querySelector('.header');
+            
+            if (gameCanvasContainer) {
+                gameCanvasContainer.style.display = 'none';
+            }
+            
+            if (mobileInterface) {
+                mobileInterface.style.display = 'block';
+                mobileInterface.style.visibility = 'visible';
+            }
+            
+            if (bottomNav) {
+                bottomNav.style.display = 'flex';
+                bottomNav.style.visibility = 'visible';
+            }
+            
+            if (header) {
+                header.style.display = 'flex';
+                header.style.visibility = 'visible';
+            }
+            
+            // Stop the game
+            window.GAME_STOPPED = true;
+            
+            console.log('Returned to main menu');
+        }
+        
+        function showMiniGameObjective(title, message) {
+            // Create objective overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'objective-overlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(0,0,0,0.8);
+                color: white;
+                padding: 15px 25px;
+                border-radius: 10px;
+                z-index: 10001;
+                font-family: Arial, sans-serif;
+                text-align: center;
+                border: 2px solid #FFD700;
+            `;
+            overlay.innerHTML = `
+                <h3 style="margin: 0 0 10px 0; color: #FFD700;">${title}</h3>
+                <p style="margin: 0; font-size: 14px;">${message}</p>
+            `;
+            
+            document.body.appendChild(overlay);
+            
+            // Remove after 5 seconds
+            setTimeout(() => {
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 5000);
+        }
+        
+        // Monitor mini-game progress continuously
+        setInterval(checkMiniGameProgress, 100);
+
+        function startDailyBreak() {
+            console.log('=== STARTING POOL GAME (DAILY BREAK) ===');
+            
+            // Show the game canvas
+            showGameInterface();
+            
+            // Start the basic pool game
+            window.DISPLAY = true;
+            window.GAME_STOPPED = false;
+            
+            if (Game && Game.startNewGame) {
+                Game.startNewGame();
+                console.log('✅ Pool game started - make your break shot!');
+            }
+            
+            // Add back button to return to main menu
+            addBackButton();
+        }
+
+        function startPointDouble() {
+            console.log('=== STARTING POINT DOUBLE ===');
+            
+            // Show the game canvas
+            showGameInterface();
+            
+            // Start the pool game properly
+            window.DISPLAY = true;
+            window.GAME_STOPPED = false;
+            
+            if (Game) {
+                // Make sure game world is initialized
+                if (!Game.gameWorld) {
+                    console.log('Initializing game world...');
+                    Game.initialize();
+                }
+                
+                // Start new game
+                if (Game.startNewGame) {
+                    Game.startNewGame();
+                    console.log('✅ Point Double started!');
+                    
+                    // Force the main loop to start
+                    if (Game.mainLoop) {
+                        requestAnimationFrame(Game.mainLoop);
+                        console.log('✅ Game loop started');
+                    }
+                }
+            }
+            
+            // Add back button to return to main menu
+            addBackButton();
+        }
+
+        function showModal(title, message) {
+            alert(title + "\n\n" + message);
+        }
+        
+        function testCanvas() {
+            console.log('=== TESTING CANVAS RENDERING ===');
+            
+            // Show game canvas container first
+            const gameCanvasContainer = document.getElementById('game-canvas-container');
+            if (gameCanvasContainer) {
+                gameCanvasContainer.style.display = 'flex';
+                console.log('✅ Game canvas container shown');
+            }
+            
+            // Try to draw directly on canvas
+            const canvas = document.getElementById('screen');
+            if (canvas) {
+                console.log('✅ Canvas found:', canvas.width, 'x', canvas.height);
+                
+                const ctx = canvas.getContext('2d');
+                if (ctx) {
+                    // Clear and draw test pattern
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw green background
+                    ctx.fillStyle = '#0f5d0f';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw white ball
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(300, 300, 40, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Draw red ball
+                    ctx.fillStyle = '#ff0000';
+                    ctx.beginPath();
+                    ctx.arc(500, 200, 35, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Draw text
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 24px Arial';
+                    ctx.fillText('CANVAS WORKING!', 50, 50);
+                    
+                    console.log('✅ Test pattern drawn successfully');
+                    
+                    // Add back button
+                    addBackButton();
+                } else {
+                    console.error('❌ Canvas context failed');
+                    alert('Canvas context not available!');
+                }
+            } else {
+                console.error('❌ Canvas element not found');
+                alert('Canvas element not found!');
+            }
+        }
+
+        function showGameInterface() {
+            console.log('=== SHOWING GAME INTERFACE ===');
+            
+            // Hide mobile interface completely
+            const mobileInterface = document.getElementById('mobile-interface');
+            const bottomNav = document.querySelector('.bottom-nav');
+            const header = document.querySelector('.header');
+            const heatMeter = document.querySelector('.heat-meter-container');
+            
+            if (mobileInterface) {
+
+                mobileInterface.style.display = 'none';
+                mobileInterface.style.visibility = 'hidden';
+                mobileInterface.style.zIndex = '-1';
+                console.log('✅ Mobile interface hidden');
+            }
+            
+            if (bottomNav) {
+                bottomNav.style.display = 'none';
+                bottomNav.style.visibility = 'hidden';
+                console.log('✅ Bottom nav hidden');
+            }
+            
+            if (header) {
+                header.style.display = 'none';
+                header.style.visibility = 'hidden';
+                console.log('✅ Header hidden');
+            }
+            
+            if (heatMeter) {
+                heatMeter.style.display = 'none';
+                heatMeter.style.visibility = 'hidden';
+                console.log('✅ Heat meter hidden');
+            }
+            
+            // Show the game canvas container
+            const gameCanvasContainer = document.getElementById('game-canvas-container');
+            const gameArea = document.getElementById('gameArea');
+            const canvas = document.getElementById('screen');
+            
+            if (gameCanvasContainer) {
+                gameCanvasContainer.style.display = 'flex';
+                gameCanvasContainer.style.justifyContent = 'center';
+                gameCanvasContainer.style.alignItems = 'center';
+                console.log('✅ Game canvas container shown');
+            }
+            
+            if (gameArea) {
+                gameArea.style.display = 'block';
+                gameArea.style.visibility = 'visible';
+                console.log('✅ Game area shown');
+            } else {
+                console.log('❌ Game area not found');
+            }
+            
+            // Make sure canvas is visible and properly sized
+            if (canvas) {
+                canvas.style.display = 'block';
+                canvas.style.visibility = 'visible';
+                console.log('✅ Canvas configured:', canvas.width, 'x', canvas.height);
+                console.log('✅ Canvas visible:', canvas.style.display);
+            } else {
+                console.log('❌ Canvas not found');
+            }
+            
+            // Force body background to be dark
+            document.body.style.background = '#000';
+            
+            // Trigger canvas resize
+            if (typeof Canvas2D !== 'undefined' && Canvas2D.resize) {
+                setTimeout(() => {
+                    Canvas2D.resize();
+                    console.log('✅ Canvas resized');
+                }, 100);
+            }
+            
+            // Add back button
+            addBackButton();
+            
+            console.log('Game interface should now be visible - no white overlay');
+        }
+
+        function showMobileInterface() {
+            // Show mobile interface elements
+            const mobileInterface = document.getElementById('mobile-interface');
+            const bottomNav = document.querySelector('.bottom-nav');
+            const header = document.querySelector('.header');
+            const heatMeter = document.querySelector('.heat-meter-container');
+            
+            if (mobileInterface) {
+                mobileInterface.style.display = 'block';
+                mobileInterface.style.visibility = 'visible';
+                mobileInterface.style.zIndex = 'auto';
+            }
+            
+            if (bottomNav) {
+                bottomNav.style.display = 'flex';
+                bottomNav.style.visibility = 'visible';
+            }
+            
+            if (header) {
+                header.style.display = 'block';
+                header.style.visibility = 'visible';
+            }
+            
+            if (heatMeter) {
+                heatMeter.style.display = 'block';
+                heatMeter.style.visibility = 'visible';
+            }
+            
+            // Hide the actual game canvas
+            document.getElementById('gameArea').style.display = 'none';
+            document.getElementById('legacy-game').style.display = 'none';
+            document.getElementById('game-canvas-container').style.display = 'none';
+            
+            // Restore body background
+            document.body.style.background = '';
+            
+            // Remove back button
+            removeBackButton();
+        }
+
+        function addBackButton() {
+            if (!document.getElementById('back-to-mobile')) {
+                const backBtn = document.createElement('button');
+                backBtn.id = 'back-to-mobile';
+                backBtn.innerHTML = '← Back to Menu';
+                backBtn.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 20px;
+                    background: rgba(0,0,0,0.8);
+                    color: white;
+                    border: none;
+                    padding: 12px 18px;
+                    border-radius: 25px;
+                    cursor: pointer;
+                    z-index: 10001;
+                    font-size: 14px;
+                    font-weight: bold;
+                    backdrop-filter: blur(10px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                `;
+                backBtn.onclick = showMobileInterface;
+                document.body.appendChild(backBtn);
+            }
+        }
+
+        function removeBackButton() {
+            const backBtn = document.getElementById('back-to-mobile');
+            if (backBtn) {
+                backBtn.remove();
+            }
+        }
+
+        // Bottom Navigation Functions
+        function showHome() {
+            showMobileInterface();
+            setActiveNav(0);
+        }
+
+        function showSwap() {
+            showModal("Swap Feature", "8Ball Token Swap\n\nExchange Points for 8Ball Tokens\n\nFeatures:\n- Convert game points to tokens\n- Trade with other players\n- Access exclusive rewards\n\nComing soon!");
+            setActiveNav(1);
+        }
+
+        function showGame() {
+            // Show the main pool game
+            showGameInterface();
+            
+            // Reset to regular game mode and show main menu
+            if (typeof Game !== 'undefined') {
+                // Make sure the game is initialized
+                if (!Game.gameWorld) {
+                    console.log('Initializing game world...');
+                    Game.initialize();
+                }
+                
+                // Show main menu for game mode selection
+                Game.mainMenu.active = true;
+                GAME_STOPPED = true;
+                
+                // Reset any mini-game modes
+                if (Game.gameWorld) {
+                    Game.gameWorld.isAimShootMode = false;
+                    Game.gameWorld.miniGameActive = false;
+                    Game.gameWorld.isBreakMode = false;
+                    Game.gameWorld.powerShotActive = false;
+                }
+                
+                // Start the main menu loop
+                if (typeof requestAnimationFrame !== 'undefined') {
+                    requestAnimationFrame(Game.mainMenu.load.bind(Game.mainMenu));
+                }
+                
+                showModal("Pool Game", "Welcome to 8Ball Arena!\nSelect your game mode from the menu.");
+            } else {
+                showModal("Loading...", "Game system is still loading. Please try again in a moment.");
+            }
+            setActiveNav(2);
+        }
+
+        function showReferral() {
+            showModal("Referral System", "Invite Friends & Earn Together!\n\nRewards:\n• 10% of friend's earnings\n• Exclusive bonus challenges\n• Team tournaments\n• VIP status unlocks\n\nShare your referral code and build your network!\n\nComing soon!");
+            setActiveNav(3);
+        }
+
+        function showCheckin() {
+            // Use the daily rewards system
+            if (!Game.dailyRewards) {
+                Game.dailyRewards = new DailyRewards();
+            }
+            
+            const result = Game.dailyRewards.performDailyCheckIn();
+            if (result.success) {
+                showModal("Daily Check-in Complete!", 
+                         `✅ Earned ${result.reward} tokens!\n💰 Total: ${result.totalTokens} tokens\n\nCome back tomorrow for your next reward!`);
+            } else {
+                showModal("Already Checked In", result.message + "\n\nTry the mini-games for more rewards!");
+            }
+            setActiveNav(4);
+        }
+
+        function setActiveNav(index) {
+            document.querySelectorAll('.nav-item').forEach((item, i) => {
+                if (i === index) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        // Update heat meter and wallet status
+        function updateInterface() {
+            updateHeatMeter();
+            updateWalletStatus();
+            updatePointsDisplay();
+        }
+
+        function updateHeatMeter() {
+            if (Game && Game.heatMeter) {
+                const stats = Game.heatMeter.getStats();
+                const fill = document.getElementById('heat-meter-fill');
+                if (fill) {
+                    fill.style.width = stats.progress + '%';
+                }
+            } else if (typeof GlobalHeatMeter !== 'undefined') {
+                const stats = GlobalHeatMeter.getStats();
+                const fill = document.getElementById('heat-meter-fill');
+                if (fill) {
+                    fill.style.width = stats.progress + '%';
+                }
+            }
+        }
+
+        function updateWalletStatus() {
+            if (Game && Game.walletManager && Game.walletManager.isConnected) {
+                updateWalletButton(true, Game.walletManager.walletAddress);
+            }
+        }
+
+        function updatePointsDisplay() {
+            if (Game && Game.dailyRewards) {
+                const stats = Game.dailyRewards.getStats();
+                const pointsDisplay = document.querySelector('.points-display');
+                if (pointsDisplay && stats.totalTokens) {
+                    pointsDisplay.textContent = `${stats.totalTokens.toFixed(0)} P`;
+                }
+            }
+        }
+
+        // Initialize mini heat meter update (for legacy support)
+        function updateMiniHeatMeter() {
+            if (typeof GlobalHeatMeter !== 'undefined') {
+                const heatStats = GlobalHeatMeter.getStats();
+                const miniMeter = document.getElementById('mini-heat-meter');
+                if (miniMeter) {
+                    const fill = miniMeter.querySelector('.mini-heat-fill');
+                    const text = miniMeter.querySelector('.mini-heat-text');
+                    
+                    if (fill && text) {
+                        fill.style.width = heatStats.progress + '%';
+                        fill.style.backgroundColor = heatStats.color;
+                        text.textContent = `Heat ${heatStats.currentHeat.toFixed(0)}`;
+                    }
+                }
+            }
+        }
+        
+        // Update interface periodically
+        setInterval(updateInterface, 5000);
+        
+        // Initial update after scripts load
+        setTimeout(() => {
+            console.log('Attempting initial interface update...');
+            updateInterface();
+            updateMiniHeatMeter();
+        }, 3000); // Wait longer for all systems to load
     </script>
 </body>
 </html>

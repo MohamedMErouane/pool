@@ -1,113 +1,59 @@
 "use strict";
 
 /**
- * Daily Rewards System for Pool Game
- * Handles daily check-ins, mining mechanics, and reward distribution
+ * Cue Shot Mining System - Simple Daily Check-in
+ * Player hits cue ball once per day and receives reward
  */
 
 function DailyRewards() {
-    this.lastCheckIn = localStorage.getItem('lastCheckIn') || null;
-    this.consecutiveDays = parseInt(localStorage.getItem('consecutiveDays')) || 0;
-    this.totalMinedTokens = parseFloat(localStorage.getItem('totalMinedTokens')) || 0;
-    this.dailyMiningRate = 10; // Base tokens per day
-    this.isCheckedInToday = false;
+    this.lastCheckIn = localStorage.getItem('lastCueShotDate') || null;
+    this.totalTokens = parseFloat(localStorage.getItem('totalTokens')) || 0;
+    this.dailyReward = 10; // Base tokens per day
+    this.isCompletedToday = false;
     
     this.checkTodayStatus();
 }
 
 DailyRewards.prototype.checkTodayStatus = function() {
     const today = new Date().toDateString();
-    const lastCheckIn = this.lastCheckIn;
-    
-    if (lastCheckIn === today) {
-        this.isCheckedInToday = true;
-    } else {
-        this.isCheckedInToday = false;
-        
-        // Check if streak is broken
-        if (lastCheckIn) {
-            const lastDate = new Date(lastCheckIn);
-            const todayDate = new Date();
-            const daysDiff = Math.floor((todayDate - lastDate) / (1000 * 60 * 60 * 24));
-            
-            if (daysDiff > 1) {
-                this.consecutiveDays = 0; // Reset streak
-            }
-        }
-    }
+    this.isCompletedToday = (this.lastCheckIn === today);
 };
 
 DailyRewards.prototype.performDailyCheckIn = function() {
-    if (this.isCheckedInToday) {
+    if (this.isCompletedToday) {
         return {
             success: false,
-            message: "Already checked in today!",
+            message: "Cue Shot already completed today! Come back tomorrow.",
             reward: 0
         };
     }
     
     const today = new Date().toDateString();
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+    const reward = this.dailyReward;
     
-    // Check if maintaining streak
-    if (this.lastCheckIn === yesterday.toDateString()) {
-        this.consecutiveDays++;
-    } else {
-        this.consecutiveDays = 1;
-    }
-    
-    // Calculate reward based on consecutive days
-    const baseReward = this.dailyMiningRate;
-    const streakBonus = Math.min(this.consecutiveDays * 0.1, 2.0); // Max 200% bonus
-    const totalReward = baseReward * (1 + streakBonus);
-    
-    // Update storage
+    // Complete the daily cue shot
     this.lastCheckIn = today;
-    this.totalMinedTokens += totalReward;
-    this.isCheckedInToday = true;
+    this.isCompletedToday = true;
+    this.totalTokens += reward;
     
-    this.saveToStorage();
+    // Save to storage
+    localStorage.setItem('lastCueShotDate', today);
+    localStorage.setItem('totalTokens', this.totalTokens.toString());
     
     return {
         success: true,
-        message: `Check-in successful! Day ${this.consecutiveDays} streak!`,
-        reward: totalReward,
-        consecutiveDays: this.consecutiveDays,
-        totalTokens: this.totalMinedTokens
+        message: `Daily Cue Shot completed!`,
+        reward: reward,
+        totalTokens: this.totalTokens
     };
-};
-
-DailyRewards.prototype.getCueShootingMining = function(shotAccuracy, ballsPotted) {
-    // Mining based on gameplay performance
-    const accuracyBonus = shotAccuracy * 0.5; // 0-0.5 tokens per shot
-    const pottingBonus = ballsPotted * 2; // 2 tokens per ball potted
-    const totalMined = accuracyBonus + pottingBonus;
-    
-    this.totalMinedTokens += totalMined;
-    this.saveToStorage();
-    
-    return {
-        mined: totalMined,
-        accuracy: accuracyBonus,
-        potting: pottingBonus,
-        total: this.totalMinedTokens
-    };
-};
-
-DailyRewards.prototype.saveToStorage = function() {
-    localStorage.setItem('lastCheckIn', this.lastCheckIn);
-    localStorage.setItem('consecutiveDays', this.consecutiveDays.toString());
-    localStorage.setItem('totalMinedTokens', this.totalMinedTokens.toString());
 };
 
 DailyRewards.prototype.getStats = function() {
     return {
         lastCheckIn: this.lastCheckIn,
-        consecutiveDays: this.consecutiveDays,
-        totalMinedTokens: this.totalMinedTokens,
-        isCheckedInToday: this.isCheckedInToday,
-        canCheckIn: !this.isCheckedInToday
+        totalTokens: this.totalTokens,
+        isCompletedToday: this.isCompletedToday,
+        canCheckIn: !this.isCompletedToday
     };
 };
 

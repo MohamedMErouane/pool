@@ -48,6 +48,12 @@ function GameWorld() {
     this.stick = new Stick({ x : 413, y : 413 });
 
     this.gameOver = false;
+    this.isBreakMode = false;
+    this.miniGameActive = false;
+    this.ballsPocketedInBreak = 0;
+    this.isAimShootMode = false;
+    this.aimShootCompleted = false;
+    this.powerShotActive = false;
 }
 
 GameWorld.prototype.getBallsSetByColor = function(color){
@@ -84,6 +90,24 @@ GameWorld.prototype.update = function (delta) {
     }
 
     if(!this.ballsMoving() && AI.finishedSession){
+        // Check if in break mode and shot is complete
+        if (this.isBreakMode && this.miniGameActive) {
+            this.handleBreakComplete();
+            return;
+        }
+        
+        // Check if in aim shoot mode and shot is complete
+        if (this.isAimShootMode && this.miniGameActive && !this.aimShootCompleted) {
+            this.handleAimShootComplete();
+            return;
+        }
+        
+        // Check if in power shot mode and shot is complete
+        if (this.powerShotActive && this.miniGameActive) {
+            this.handlePowerShotComplete();
+            return;
+        }
+        
         Game.policy.updateTurnOutcome();
         if(Game.policy.foul){
             this.ballInHand();
@@ -251,20 +275,31 @@ GameWorld.prototype.trackShotTaken = function(shotPower, accuracy) {
 };
 
 GameWorld.prototype.trackBallPotted = function(ball) {
+    // Check if in break mode
+    if (this.isBreakMode && this.miniGameActive) {
+        this.ballsPocketedInBreak++;
+        return this.ballsPocketedInBreak;
+    }
+    
     // Add heat for potting a ball
-    GlobalHeatMeter.addHeatForAction('ball_potted');
+    if (typeof GlobalHeatMeter !== 'undefined') {
+        GlobalHeatMeter.addHeatForAction('ball_potted');
+    }
     
     // Mine tokens for successful pot
     const pottingReward = 2; // Base reward for potting a ball
-    const miningResult = DailyReward.getCueShootingMining(0, 1);
     
     // Add to pending rewards
-    SolanaWalletManager.addPendingReward(pottingReward, "Ball Potted");
+    if (typeof SolanaWalletManager !== 'undefined') {
+        SolanaWalletManager.addPendingReward(pottingReward, "Ball Potted");
+    }
     
     // Show mining notification
-    rewardsDashboard.showNotification(`🎱 Ball potted! +${pottingReward} tokens mined`, 'success');
+    if (typeof rewardsDashboard !== 'undefined') {
+        rewardsDashboard.showNotification("Ball potted! +" + pottingReward + " tokens mined", 'success');
+    }
     
-    return miningResult;
+    return pottingReward;
 };
 
 GameWorld.prototype.trackGameWon = function(winner) {
@@ -295,6 +330,148 @@ GameWorld.prototype.trackBreakShot = function(ballsSpread, ballsPotted) {
     }
     
     return breakReward;
+};
+
+GameWorld.prototype.handleBreakComplete = function() {
+    this.miniGameActive = false;
+    
+    if (!Game.miniGames) {
+        Game.miniGames = new MiniGames();
+    }
+    
+    const result = Game.miniGames.completeBreakShot(this.ballsPocketedInBreak);
+    
+    // Show result overlay
+    this.showBreakResult(result);
+    
+    // Return to main menu after delay
+    setTimeout(() => {
+        Game.initMenus(false);
+        Game.mainMenu.active = true;
+        GAME_STOPPED = true;
+    }, 3000);
+};
+
+GameWorld.prototype.showBreakResult = function(result) {
+    // Simple alert for now - can be enhanced with proper UI later
+    if (result.success) {
+        alert("Daily Break Complete!\nBalls Pocketed: " + result.ballsPocketed + "\nPoints: " + result.points);
+    } else {
+        alert("Daily Break Result:\nBalls Pocketed: " + result.ballsPocketed + "\n" + result.message);
+    }
+};
+
+GameWorld.prototype.handleAimShootComplete = function() {
+    this.miniGameActive = false;
+    this.aimShootCompleted = true;
+    
+    // Calculate reward based on accuracy and balls potted
+    const ballsPotted = this.countPottedBalls();
+    const baseReward = 5; // Base reward for taking a shot
+    const pottingBonus = ballsPotted * 3; // 3 tokens per ball potted
+    const totalReward = baseReward + pottingBonus;
+    
+    // Add to daily rewards
+    if (typeof DailyReward !== 'undefined') {
+        DailyReward.totalTokens += totalReward;
+        localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
+    }
+    
+    // Add to wallet rewards if connected
+    if (typeof SolanaWalletManager !== 'undefined') {
+        SolanaWalletManager.addPendingReward(totalReward, "Aim & Shoot");
+    }
+    
+    // Show result
+    this.showAimShootResult(ballsPotted, totalReward);
+    
+    // Return to main menu after delay
+    setTimeout(() => {
+        if (typeof showMobileInterface === 'function') {
+            showMobileInterface();
+        }
+    }, 3000);
+};
+
+GameWorld.prototype.showAimShootResult = function(ballsPotted, reward) {
+    let message = "Aim & Shoot Complete!\n\n";
+    message += "Balls Potted: " + ballsPotted + "\n";
+    message += "Reward: " + reward + " tokens\n";
+    
+    if (ballsPotted > 0) {
+        message += "\nGreat shooting! 🎯";
+    } else {
+        message += "\nKeep practicing! 💪";
+    }
+    
+    alert(message);
+};
+
+GameWorld.prototype.handlePowerShotComplete = function() {
+    this.miniGameActive = false;
+    this.powerShotActive = false;
+    
+    // Calculate reward based on balls potted
+    const ballsPotted = this.countPottedBalls();
+    let baseReward = ballsPotted * 5; // 5 tokens per ball potted
+    
+    // 40% chance to double the reward
+    const doubleChance = Math.random() < 0.4;
+    if (doubleChance) {
+        baseReward *= 2;
+    }
+    
+    // Add to daily rewards
+    if (typeof DailyReward !== 'undefined') {
+        DailyReward.totalTokens += baseReward;
+        localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
+    }
+    
+    // Add to wallet rewards if connected
+    if (typeof SolanaWalletManager !== 'undefined') {
+        SolanaWalletManager.addPendingReward(baseReward, "Power Shot");
+    }
+    
+    // Show result
+    this.showPowerShotResult(ballsPotted, baseReward, doubleChance);
+    
+    // Return to main menu after delay
+    setTimeout(() => {
+        if (typeof showMobileInterface === 'function') {
+            showMobileInterface();
+        }
+    }, 3000);
+};
+
+GameWorld.prototype.showPowerShotResult = function(ballsPotted, reward, wasDoubled) {
+    let message = "Power Shot Complete!\n\n";
+    message += "Balls Potted: " + ballsPotted + "\n";
+    message += "Base Reward: " + (wasDoubled ? reward/2 : reward) + " tokens\n";
+    
+    if (wasDoubled) {
+        message += "🎉 DOUBLE BONUS ACTIVATED! 🎉\n";
+        message += "Final Reward: " + reward + " tokens\n";
+    } else {
+        message += "No double this time (40% chance)\n";
+    }
+    
+    if (ballsPotted > 0) {
+        message += "\nExcellent power shot! ⚡";
+    } else {
+        message += "\nTry again for better results! 💪";
+    }
+    
+    alert(message);
+};
+
+GameWorld.prototype.countPottedBalls = function() {
+    let count = 0;
+    for (let i = 0; i < this.balls.length; i++) {
+        if (this.balls[i].inHole && this.balls[i] !== this.whiteBall) {
+            count++;
+        }
+    }
+    return count;
 };
 
 GameWorld.prototype.trackPowerShot = function(power, success) {

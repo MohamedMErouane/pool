@@ -8,7 +8,7 @@ const DELTA = 1/100;
 
 let DISPLAY = true;
 let SOUND_ON = true;
-let GAME_STOPPED = true;
+let GAME_STOPPED = false; // Set to false so the game displays by default
 
 let KEYBOARD_INPUT_ON = true;
 
