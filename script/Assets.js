@@ -7,6 +7,10 @@ Game.loadAssets = function () {
     var loadSprite = function (sprite) {
         return Game.loadSprite("assets/sprites/" + sprite);
     };
+    
+    var loadBallSprite = function (ballNumber) {
+        return Game.loadSprite("assets/Balls/style2/" + ballNumber + ".png");
+    };
 
      var loadSound = function (sound) {
         return new Audio("assets/sounds/" + sound);
@@ -14,10 +18,31 @@ Game.loadAssets = function () {
 
     sprites.mainMenuBackground = loadSprite("main_menu_background.png");
     sprites.background = loadSprite("spr_background4.png");
-    sprites.ball = loadSprite("spr_ball2.png");
-    sprites.redBall = loadSprite("spr_redBall2.png");
-    sprites.yellowBall = loadSprite("spr_yellowBall2.png");
-    sprites.blackBall = loadSprite("spr_blackBall2.png");
+    
+    // Load numbered ball sprites from style2 folder
+    sprites.ball = loadBallSprite("0");        // Cue ball (white)
+    sprites.redBall = loadBallSprite("3");     // Red ball example
+    sprites.yellowBall = loadBallSprite("1");  // Yellow ball example  
+    sprites.blackBall = loadBallSprite("8");   // 8-ball (black)
+    
+    // Load all numbered balls (1-15 + cue ball 0)
+    sprites.ball0 = loadBallSprite("0");   // Cue ball
+    sprites.ball1 = loadBallSprite("1");   // 1 ball
+    sprites.ball2 = loadBallSprite("2");   // 2 ball
+    sprites.ball3 = loadBallSprite("3");   // 3 ball
+    sprites.ball4 = loadBallSprite("4");   // 4 ball
+    sprites.ball5 = loadBallSprite("5");   // 5 ball
+    sprites.ball6 = loadBallSprite("6");   // 6 ball
+    sprites.ball7 = loadBallSprite("7");   // 7 ball
+    sprites.ball8 = loadBallSprite("8");   // 8 ball
+    sprites.ball9 = loadBallSprite("9");   // 9 ball
+    sprites.ball10 = loadBallSprite("10"); // 10 ball
+    sprites.ball11 = loadBallSprite("11"); // 11 ball
+    sprites.ball12 = loadBallSprite("12"); // 12 ball
+    sprites.ball13 = loadBallSprite("13"); // 13 ball
+    sprites.ball14 = loadBallSprite("14"); // 14 ball
+    sprites.ball15 = loadBallSprite("15"); // 15 ball
+    
     sprites.stick = loadSprite("spr_stick.png");
     sprites.twoPlayersButton = loadSprite("2_players_button.png");
     sprites.twoPlayersButtonHover = loadSprite("2_players_button_hover.png");

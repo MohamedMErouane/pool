@@ -2,48 +2,63 @@
 
 function GameWorld() {
 
-    this.whiteBallStartingPosition = new Vector2(413,413);
+    this.whiteBallStartingPosition = new Vector2(413,400);
 
-    this.redBalls = [
-    new Ball(new Vector2(1056,433),Color.red),//3
-    new Ball(new Vector2(1090,374),Color.red),//4
-    new Ball(new Vector2(1126,393),Color.red),//8
-    new Ball(new Vector2(1126,472),Color.red),//10;
-    new Ball(new Vector2(1162,335),Color.red),//11
-    new Ball(new Vector2(1162,374),Color.red),//12
-    new Ball(new Vector2(1162,452),Color.red)//14
-    ]
+    // Create balls in perfect triangle formation with MORE spacing
+    // Increased spacing to 30+ pixels to create clear gaps between balls
+    
+    // Row 1 (front) - 1 ball
+    var ball1 = new NumberedBall(new Vector2(1000, 413), 1);  // 1 ball at front
+    
+    // Row 2 - 2 balls
+    var ball2 = new NumberedBall(new Vector2(1040, 398), 2);  // 2 ball top
+    var ball3 = new NumberedBall(new Vector2(1040, 428), 3);  // 3 ball bottom
+    
+    // Row 3 - 3 balls  
+    var ball4 = new NumberedBall(new Vector2(1080, 383), 4);  // 4 ball top
+    var ball8 = new NumberedBall(new Vector2(1080, 413), 8);  // 8 ball center
+    var ball5 = new NumberedBall(new Vector2(1080, 443), 5);  // 5 ball bottom
+    
+    // Row 4 - 4 balls
+    var ball6 = new NumberedBall(new Vector2(1120, 368), 6);   // 6 ball top
+    var ball7 = new NumberedBall(new Vector2(1120, 398), 7);   // 7 ball
+    var ball9 = new NumberedBall(new Vector2(1120, 428), 9);   // 9 ball
+    var ball10 = new NumberedBall(new Vector2(1120, 458), 10); // 10 ball bottom
+    
+    // Row 5 (back) - 5 balls
+    var ball11 = new NumberedBall(new Vector2(1160, 353), 11); // 11 ball top
+    var ball12 = new NumberedBall(new Vector2(1160, 383), 12); // 12 ball
+    var ball13 = new NumberedBall(new Vector2(1160, 413), 13); // 13 ball center
+    var ball14 = new NumberedBall(new Vector2(1160, 443), 14); // 14 ball
+    var ball15 = new NumberedBall(new Vector2(1160, 473), 15); // 15 ball bottom
 
-    this.yellowBalls = [
-    new Ball(new Vector2(1022,413),Color.yellow),//1
-    new Ball(new Vector2(1056,393),Color.yellow),//2
-    new Ball(new Vector2(1090,452),Color.yellow),//6
-    new Ball(new Vector2(1126,354),Color.yellow),//7
-    new Ball(new Vector2(1126,433),Color.yellow),//9
-    new Ball(new Vector2(1162,413),Color.yellow),//13
-    new Ball(new Vector2(1162,491),Color.yellow)//15
-    ];
+    // Group balls by type for game logic (solids vs stripes)
+    this.redBalls = [ball3, ball4, ball7, ball11, ball12, ball14, ball15];
+    this.yellowBalls = [ball1, ball2, ball5, ball6, ball9, ball10, ball13];
 
-    this.whiteBall = new Ball(new Vector2(413,413),Color.white);
-    this.blackBall = new Ball(new Vector2(1090,413),Color.black);
+    // White ball positioned for break shot
+    this.whiteBall = new NumberedBall(new Vector2(413, 400), 0); // Cue ball
+    this.blackBall = ball8; // 8 ball
 
+    // All balls in play order
     this.balls = [
-    this.yellowBalls[0],
-    this.yellowBalls[1],
-    this.redBalls[0],
-    this.redBalls[1],
-    this.blackBall,
-    this.yellowBalls[2],
-    this.yellowBalls[3],
-    this.redBalls[2],
-    this.yellowBalls[4],
-    this.redBalls[3],
-    this.redBalls[4],
-    this.redBalls[5],
-    this.yellowBalls[5],
-    this.redBalls[6],
-    this.yellowBalls[6],
-    this.whiteBall]
+        ball1,  // 1
+        ball2,  // 2
+        ball3,  // 3
+        ball4,  // 4
+        ball8,  // 8 (black ball)
+        ball5,  // 5
+        ball6,  // 6
+        ball7,  // 7
+        ball9,  // 9
+        ball10, // 10
+        ball11, // 11
+        ball12, // 12
+        ball13, // 13
+        ball14, // 14
+        ball15, // 15
+        this.whiteBall // 0 (cue ball)
+    ];
 
     this.stick = new Stick({ x : 413, y : 413 });
 

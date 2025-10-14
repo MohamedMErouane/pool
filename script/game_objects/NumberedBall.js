@@ -15,18 +15,24 @@ NumberedBall.prototype.constructor = NumberedBall;
 
 // Set the correct sprite based on ball number
 NumberedBall.prototype.setSprite = function() {
-    if (this.number === 0) {
-        // Cue ball (white)
-        this.sprite = sprites.ball;
-    } else if (this.number === 8) {
-        // 8-ball (black)
-        this.sprite = sprites.blackBall || sprites.ball;
-    } else if (this.number >= 1 && this.number <= 7) {
-        // Solid balls (red)
-        this.sprite = sprites.redBall || sprites.ball;
-    } else {
-        // Stripe balls (yellow)
-        this.sprite = sprites.yellowBall || sprites.ball;
+    switch(this.number) {
+        case 0: this.sprite = sprites.ball0 || sprites.ball; break;   // Cue ball
+        case 1: this.sprite = sprites.ball1 || sprites.yellowBall; break;
+        case 2: this.sprite = sprites.ball2 || sprites.yellowBall; break;
+        case 3: this.sprite = sprites.ball3 || sprites.redBall; break;
+        case 4: this.sprite = sprites.ball4 || sprites.redBall; break;
+        case 5: this.sprite = sprites.ball5 || sprites.yellowBall; break;
+        case 6: this.sprite = sprites.ball6 || sprites.yellowBall; break;
+        case 7: this.sprite = sprites.ball7 || sprites.redBall; break;
+        case 8: this.sprite = sprites.ball8 || sprites.blackBall; break;
+        case 9: this.sprite = sprites.ball9 || sprites.yellowBall; break;
+        case 10: this.sprite = sprites.ball10 || sprites.yellowBall; break;
+        case 11: this.sprite = sprites.ball11 || sprites.redBall; break;
+        case 12: this.sprite = sprites.ball12 || sprites.redBall; break;
+        case 13: this.sprite = sprites.ball13 || sprites.yellowBall; break;
+        case 14: this.sprite = sprites.ball14 || sprites.redBall; break;
+        case 15: this.sprite = sprites.ball15 || sprites.yellowBall; break;
+        default: this.sprite = sprites.ball; break;
     }
 };
 
@@ -38,7 +44,7 @@ NumberedBall.prototype.getColor = function() {
     return Color.yellow;
 };
 
-// Override draw method to show numbers
+// Override draw method to scale numbered balls to exact original ball size
 NumberedBall.prototype.draw = function() {
     if (!this.visible) return;
     
@@ -47,24 +53,11 @@ NumberedBall.prototype.draw = function() {
         this.setSprite();
     }
     
-    // Draw the ball sprite (same as parent Ball class)
-    if (this.sprite) {
-        Canvas2D.drawImage(this.sprite, this.position, 0, 1, new Vector2(25, 25));
-    }
+    // Make numbered balls smaller - reduced scale for smaller ball size
+    var scale = 0.05; // Even smaller scale for more realistic ball size
+    var origin = new Vector2(25, 25); // Keep same origin as original balls
     
-    // Draw the number on top (except for cue ball)
-    if (this.number !== 0) {
-        let textColor = this.number === 8 ? Color.white : Color.black;
-        Canvas2D.drawText(
-            this.number.toString(),
-            this.position,
-            new Vector2(8, 8), // Offset to center text
-            textColor,
-            "center",
-            "Arial",
-            "16px"
-        );
-    }
+    Canvas2D.drawImage(this.sprite, this.position, 0, scale, origin);
 };
 
 // Reset method
