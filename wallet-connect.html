@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8Ball Arena - Connect Wallet</title>
+    <link rel="stylesheet" href="css/game-layout.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .wallet-connect-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 400px;
+            width: 90%;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        
+        .connect-wallet-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        
+        .connect-wallet-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .features {
+            text-align: left;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            color: #333;
+        }
+        
+        .feature-icon {
+            margin-right: 15px;
+            font-size: 20px;
+        }
+        
+        .error-message {
+            color: #e74c3c;
+            margin-top: 15px;
+            padding: 10px;
+            background: #fdf2f2;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .success-message {
+            color: #27ae60;
+            margin-top: 15px;
+            padding: 10px;
+            background: #f2fdf2;
+            border-radius: 8px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="wallet-connect-container">
+        <div class="logo">🎱</div>
+        <h1>Welcome to 8Ball Arena</h1>
+        <p class="subtitle">Connect your Phantom wallet to start earning tokens through exciting pool games</p>
+        
+        <button class="connect-wallet-btn" id="connect-wallet-btn" onclick="connectWallet()">
+            CONNECT PHANTOM WALLET
+        </button>
+        
+        <div class="error-message" id="error-message"></div>
+        <div class="success-message" id="success-message"></div>
+        
+        <div class="features">
+            <div class="feature-item">
+                <span class="feature-icon">🎮</span>
+                <span>Play exciting mini-games</span>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">💰</span>
+                <span>Earn 8Ball tokens</span>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">🏆</span>
+                <span>Daily rewards & challenges</span>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">👥</span>
+                <span>Referral system</span>
+            </div>
+            <div class="feature-item">
+                <span class="feature-icon">💱</span>
+                <span>Token swap features</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function connectWallet() {
+            const btn = document.getElementById('connect-wallet-btn');
+            const errorMsg = document.getElementById('error-message');
+            const successMsg = document.getElementById('success-message');
+            
+            // Hide previous messages
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            
+            // Update button state
+            btn.textContent = 'CONNECTING...';
+            btn.disabled = true;
+            
+            try {
+                if (window.solana && window.solana.isPhantom) {
+                    const response = await window.solana.connect();
+                    const address = response.publicKey.toString();
+                    
+                    // Store wallet connection status
+                    localStorage.setItem('walletConnected', 'true');
+                    localStorage.setItem('walletAddress', address);
+                    
+                    // Show success message
+                    successMsg.textContent = `Wallet connected! Redirecting to app...`;
+                    successMsg.style.display = 'block';
+                    
+                    // Redirect to main app after short delay
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 2000);
+                    
+                } else {
+                    throw new Error('Phantom wallet not detected. Please install Phantom wallet from https://phantom.app/');
+                }
+            } catch (error) {
+                console.error('Wallet connection error:', error);
+                errorMsg.textContent = error.message;
+                errorMsg.style.display = 'block';
+                
+                // Reset button
+                btn.textContent = 'CONNECT PHANTOM WALLET';
+                btn.disabled = false;
+            }
+        }
+        
+        // Check if wallet is already connected
+        window.addEventListener('load', () => {
+            if (localStorage.getItem('walletConnected') === 'true') {
+                // Already connected, redirect to main app
+                window.location.href = 'index.html';
+            }
+        });
+    </script>
+</body>
+</html>

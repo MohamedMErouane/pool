@@ -178,7 +178,72 @@
             <div class="logo-triangle">8</div>
             <span class="app-title">8Ball Arena</span>
         </div>
-        <div class="points-display">1,000 P</div>
+        <div class="header-right">
+            <div class="points-display">1,000 P</div>
+            <button class="hamburger-menu" onclick="toggleDropdownMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Dropdown Navigation Menu -->
+    <div class="dropdown-navbar" id="dropdown-navbar">
+        <div class="dropdown-content">
+            <div class="dropdown-header">
+                <div class="user-profile">
+                    <div class="avatar">🎱</div>
+                    <div class="user-info">
+                        <div class="username">Player</div>
+                        <div class="user-level">Level 5</div>
+                    </div>
+                </div>
+                <button class="close-dropdown" onclick="toggleDropdownMenu()">✕</button>
+            </div>
+            
+            <div class="dropdown-menu-items">
+                <a href="#" class="menu-item" onclick="showHome()">
+                    <span class="menu-icon">🏠</span>
+                    <span class="menu-text">Home</span>
+                </a>
+                <a href="#" class="menu-item" onclick="showGame()">
+                    <span class="menu-icon">🎮</span>
+                    <span class="menu-text">Games</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">🏆</span>
+                    <span class="menu-text">Leaderboard</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">👥</span>
+                    <span class="menu-text">Friends</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">🎁</span>
+                    <span class="menu-text">Rewards</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">💎</span>
+                    <span class="menu-text">Shop</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">⚙️</span>
+                    <span class="menu-text">Settings</span>
+                </a>
+                <a href="#" class="menu-item">
+                    <span class="menu-icon">📞</span>
+                    <span class="menu-text">Support</span>
+                </a>
+            </div>
+            
+            <div class="dropdown-footer">
+                <button class="logout-btn">
+                    <span class="menu-icon">🚪</span>
+                    <span class="menu-text">Logout</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Heat Meter -->
@@ -252,9 +317,61 @@
             <div class="nav-icon">👥</div>
             <span>Referral</span>
         </div>
-        <div class="nav-item" onclick="showCheckin()">
-            <div class="nav-icon">✓</div>
-            <span>Check-In</span>
+        <div class="nav-item" onclick="toggleBottomDropdown()">
+            <div class="nav-icon">☰</div>
+            <span>MENU</span>
+        </div>
+    </div>
+
+    <!-- Bottom Dropdown Menu -->
+    <div class="bottom-dropdown-menu" id="bottom-dropdown-menu">
+        <div class="bottom-dropdown-content">
+            <div class="bottom-dropdown-header">
+                <h3>Quick Actions</h3>
+                <button class="close-bottom-dropdown" onclick="toggleBottomDropdown()">✕</button>
+            </div>
+            
+            <div class="bottom-menu-grid">
+                <div class="bottom-menu-item" onclick="showCheckin()">
+                    <div class="bottom-menu-icon">✓</div>
+                    <span>Check-In</span>
+                </div>
+                <div class="bottom-menu-item" onclick="showLeaderboard()">
+                    <div class="bottom-menu-icon">🏆</div>
+                    <span>Leaderboard</span>
+                </div>
+                <div class="bottom-menu-item" onclick="showRewards()">
+                    <div class="bottom-menu-icon">🎁</div>
+                    <span>Rewards</span>
+                </div>
+                <div class="bottom-menu-item" onclick="showShop()">
+                    <div class="bottom-menu-icon">💎</div>
+                    <span>Shop</span>
+                </div>
+                <div class="bottom-menu-item" onclick="showFriends()">
+                    <div class="bottom-menu-icon">👥</div>
+                    <span>Friends</span>
+                </div>
+                <div class="bottom-menu-item" onclick="showSettings()">
+                    <div class="bottom-menu-icon">⚙️</div>
+                    <span>Settings</span>
+                </div>
+                <div class="bottom-menu-item" onclick="showSupport()">
+                    <div class="bottom-menu-icon">📞</div>
+                    <span>Support</span>
+                </div>
+                <div class="bottom-menu-item" onclick="showProfile()">
+                    <div class="bottom-menu-icon">👤</div>
+                    <span>Profile</span>
+                </div>
+            </div>
+            
+            <div class="bottom-menu-footer">
+                <button class="bottom-logout-btn" onclick="logout()">
+                    <span class="menu-icon">🚪</span>
+                    <span>Logout</span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -849,11 +966,13 @@
         function showHome() {
             showMobileInterface();
             setActiveNav(0);
+            closeDropdownMenu(); // Close dropdown when navigating
         }
 
         function showSwap() {
             showModal("Swap Feature", "8Ball Token Swap\n\nExchange Points for 8Ball Tokens\n\nFeatures:\n- Convert game points to tokens\n- Trade with other players\n- Access exclusive rewards\n\nComing soon!");
             setActiveNav(1);
+            closeDropdownMenu(); // Close dropdown when navigating
         }
 
         function showGame() {
@@ -873,6 +992,7 @@
                 GAME_STOPPED = true;
                 
                 // Reset any mini-game modes
+                closeDropdownMenu(); // Close dropdown when navigating
                 if (Game.gameWorld) {
                     Game.gameWorld.isAimShootMode = false;
                     Game.gameWorld.miniGameActive = false;
@@ -921,6 +1041,142 @@
                     item.classList.remove('active');
                 }
             });
+        }
+
+        // Dropdown Navigation Functions
+        let dropdownMenuOpen = false;
+
+        function toggleDropdownMenu() {
+            const dropdown = document.getElementById('dropdown-navbar');
+            const overlay = document.getElementById('dropdown-overlay');
+            
+            if (dropdownMenuOpen) {
+                closeDropdownMenu();
+            } else {
+                openDropdownMenu();
+            }
+        }
+
+        function openDropdownMenu() {
+            const dropdown = document.getElementById('dropdown-navbar');
+            
+            // Create overlay if it doesn't exist
+            if (!document.getElementById('dropdown-overlay')) {
+                const overlay = document.createElement('div');
+                overlay.id = 'dropdown-overlay';
+                overlay.className = 'dropdown-overlay';
+                overlay.onclick = closeDropdownMenu;
+                document.body.appendChild(overlay);
+            }
+            
+            const overlay = document.getElementById('dropdown-overlay');
+            
+            dropdown.classList.add('active');
+            overlay.classList.add('active');
+            dropdownMenuOpen = true;
+            
+            // Prevent body scroll when menu is open
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeDropdownMenu() {
+            const dropdown = document.getElementById('dropdown-navbar');
+            const overlay = document.getElementById('dropdown-overlay');
+            
+            if (dropdown) dropdown.classList.remove('active');
+            if (overlay) overlay.classList.remove('active');
+            dropdownMenuOpen = false;
+            
+            // Re-enable body scroll
+            document.body.style.overflow = '';
+        }
+
+        // Close dropdown when clicking outside or pressing escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && dropdownMenuOpen) {
+                closeDropdownMenu();
+            }
+            if (e.key === 'Escape' && bottomDropdownOpen) {
+                closeBottomDropdown();
+            }
+        });
+
+        // Bottom Dropdown Menu Functions
+        let bottomDropdownOpen = false;
+
+        function toggleBottomDropdown() {
+            if (bottomDropdownOpen) {
+                closeBottomDropdown();
+            } else {
+                openBottomDropdown();
+            }
+        }
+
+        function openBottomDropdown() {
+            const dropdown = document.getElementById('bottom-dropdown');
+            const overlay = document.getElementById('bottom-dropdown-overlay');
+            
+            if (dropdown) dropdown.classList.add('active');
+            if (overlay) overlay.classList.add('active');
+            bottomDropdownOpen = true;
+            
+            // Prevent body scroll
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeBottomDropdown() {
+            const dropdown = document.getElementById('bottom-dropdown');
+            const overlay = document.getElementById('bottom-dropdown-overlay');
+            
+            if (dropdown) dropdown.classList.remove('active');
+            if (overlay) overlay.classList.remove('active');
+            bottomDropdownOpen = false;
+            
+            // Re-enable body scroll
+            document.body.style.overflow = '';
+        }
+
+        // Bottom dropdown menu action functions
+        function showLeaderboard() {
+            closeBottomDropdown();
+            alert('Leaderboard coming soon!');
+        }
+
+        function showRewards() {
+            closeBottomDropdown();
+            alert('Daily Rewards coming soon!');
+        }
+
+        function showShop() {
+            closeBottomDropdown();
+            alert('Shop coming soon!');
+        }
+
+        function showFriends() {
+            closeBottomDropdown();
+            alert('Friends coming soon!');
+        }
+
+        function showSettings() {
+            closeBottomDropdown();
+            alert('Settings coming soon!');
+        }
+
+        function showSupport() {
+            closeBottomDropdown();
+            alert('Support coming soon!');
+        }
+
+        function showProfile() {
+            closeBottomDropdown();
+            alert('Profile coming soon!');
+        }
+
+        function logout() {
+            closeBottomDropdown();
+            if (confirm('Are you sure you want to logout?')) {
+                alert('Logout functionality coming soon!');
+            }
         }
 
         // Update heat meter and wallet status
@@ -989,6 +1245,33 @@
             updateInterface();
             updateMiniHeatMeter();
         }, 3000); // Wait longer for all systems to load
+
+        // Add event listeners when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Top dropdown overlay click to close
+            const topOverlay = document.getElementById('dropdown-overlay');
+            if (topOverlay) {
+                topOverlay.addEventListener('click', closeDropdownMenu);
+            }
+
+            // Bottom dropdown overlay click to close
+            const bottomOverlay = document.getElementById('bottom-dropdown-overlay');
+            if (bottomOverlay) {
+                bottomOverlay.addEventListener('click', closeBottomDropdown);
+            }
+
+            // Debug: Check if bottom navbar is visible
+            setTimeout(() => {
+                const bottomNav = document.querySelector('.bottom-nav');
+                if (bottomNav) {
+                    console.log('Bottom navbar found:', bottomNav);
+                    console.log('Bottom navbar computed style:', window.getComputedStyle(bottomNav));
+                    console.log('Bottom navbar position:', bottomNav.getBoundingClientRect());
+                } else {
+                    console.log('Bottom navbar NOT found!');
+                }
+            }, 1000);
+        });
     </script>
 </body>
 </html>
