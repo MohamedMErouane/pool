@@ -1103,6 +1103,183 @@ html, body {
     z-index: 10000; /* Ensure rewards button is clickable */
 }
 
+/* Ranking Page Styles */
+.page-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    color: white;
+    z-index: 2000;
+    overflow-y: auto;
+}
+
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    background: rgba(74, 158, 255, 0.1);
+    border-bottom: 2px solid #4a9eff;
+}
+
+.back-btn {
+    background: #4a9eff;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.back-btn:hover {
+    background: #357abd;
+}
+
+.page-header h2 {
+    margin: 0;
+    font-size: 24px;
+    color: #4a9eff;
+}
+
+.header-spacer {
+    width: 80px; /* Same width as back button for centering */
+}
+
+.ranking-content {
+    padding: 20px;
+}
+
+.ranking-tabs {
+    display: flex;
+    margin-bottom: 30px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.ranking-tab {
+    flex: 1;
+    padding: 15px;
+    background: transparent;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.ranking-tab.active {
+    background: #4a9eff;
+    color: white;
+}
+
+.ranking-tab:hover:not(.active) {
+    background: rgba(74, 158, 255, 0.3);
+}
+
+.ranking-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.ranking-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+.ranking-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+.ranking-item.top-player {
+    background: linear-gradient(135deg, #ffd700 20%, #ffed4e 100%);
+    color: #1a1a2e;
+    border: 2px solid #ffd700;
+}
+
+.ranking-item.current-player {
+    background: linear-gradient(135deg, #4a9eff 20%, #74b9ff 100%);
+    border: 2px solid #4a9eff;
+}
+
+.rank-number {
+    width: 40px;
+    height: 40px;
+    background: rgba(74, 158, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 18px;
+    margin-right: 15px;
+}
+
+.top-player .rank-number {
+    background: rgba(26, 26, 46, 0.3);
+    color: #1a1a2e;
+}
+
+.current-player .rank-number {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.player-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin-right: 15px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.player-info {
+    flex: 1;
+}
+
+.player-name {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.player-stats {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.top-player .player-stats {
+    opacity: 0.7;
+}
+
+.rank-points {
+    font-size: 20px;
+    font-weight: bold;
+    color: #4a9eff;
+}
+
+.top-player .rank-points {
+    color: #1a1a2e;
+}
+
+.current-player .rank-points {
+    color: white;
+}
+
 /* Responsive canvas scaling for mobile */
 @media (max-width: 768px) {
     #screen {
@@ -1113,5 +1290,50 @@ html, body {
     
     #gameArea {
         padding: 10px;
+    }
+    
+    .page-header {
+        padding: 15px;
+    }
+    
+    .page-header h2 {
+        font-size: 20px;
+    }
+    
+    .ranking-content {
+        padding: 15px;
+    }
+    
+    .ranking-tab {
+        padding: 12px;
+        font-size: 14px;
+    }
+    
+    .ranking-item {
+        padding: 12px;
+    }
+    
+    .rank-number {
+        width: 35px;
+        height: 35px;
+        font-size: 16px;
+    }
+    
+    .player-avatar {
+        width: 45px;
+        height: 45px;
+        font-size: 20px;
+    }
+    
+    .player-name {
+        font-size: 16px;
+    }
+    
+    .player-stats {
+        font-size: 12px;
+    }
+    
+    .rank-points {
+        font-size: 18px;
     }
 }

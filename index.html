@@ -216,6 +216,10 @@
                     <span class="menu-icon">🏆</span>
                     <span class="menu-text">Leaderboard</span>
                 </a>
+                <a href="#" class="menu-item" onclick="showRanking()">
+                    <span class="menu-icon">📊</span>
+                    <span class="menu-text">Ranking</span>
+                </a>
                 <a href="#" class="menu-item">
                     <span class="menu-icon">👥</span>
                     <span class="menu-text">Friends</span>
@@ -346,7 +350,7 @@
                     <span>Rewards</span>
                 </div>
                 <div class="bottom-menu-item" onclick="showShop()">
-                    <div class="bottom-menu-icon">💎</div>
+                    <div class="bottom-menu-icon">�</div>
                     <span>Shop</span>
                 </div>
                 <div class="bottom-menu-item" onclick="showFriends()">
@@ -356,10 +360,6 @@
                 <div class="bottom-menu-item" onclick="showSettings()">
                     <div class="bottom-menu-icon">⚙️</div>
                     <span>Settings</span>
-                </div>
-                <div class="bottom-menu-item" onclick="showSupport()">
-                    <div class="bottom-menu-icon">📞</div>
-                    <span>Support</span>
                 </div>
                 <div class="bottom-menu-item" onclick="showProfile()">
                     <div class="bottom-menu-icon">👤</div>
@@ -372,6 +372,149 @@
                     <span class="menu-icon">🚪</span>
                     <span>Logout</span>
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ranking Page -->
+    <div id="ranking-page" class="page-container" style="display: none;">
+        <div class="page-header">
+            <button class="back-btn" onclick="hideRanking()">← Back</button>
+            <h2>Player Rankings</h2>
+            <div class="header-spacer"></div>
+        </div>
+        
+        <div class="ranking-content">
+            <div class="ranking-tabs">
+                <button class="ranking-tab active" onclick="showRankingTab('weekly')">Weekly</button>
+                <button class="ranking-tab" onclick="showRankingTab('monthly')">Monthly</button>
+                <button class="ranking-tab" onclick="showRankingTab('alltime')">All Time</button>
+            </div>
+            
+            <div class="ranking-list" id="weekly-ranking">
+                <div class="ranking-item top-player">
+                    <div class="rank-number">1</div>
+                    <div class="player-avatar">👑</div>
+                    <div class="player-info">
+                        <div class="player-name">PoolMaster</div>
+                        <div class="player-stats">2,450 points • 95% win rate</div>
+                    </div>
+                    <div class="rank-points">2,450</div>
+                </div>
+                
+                <div class="ranking-item">
+                    <div class="rank-number">2</div>
+                    <div class="player-avatar">🏆</div>
+                    <div class="player-info">
+                        <div class="player-name">CueStick Pro</div>
+                        <div class="player-stats">2,180 points • 87% win rate</div>
+                    </div>
+                    <div class="rank-points">2,180</div>
+                </div>
+                
+                <div class="ranking-item">
+                    <div class="rank-number">3</div>
+                    <div class="player-avatar">🥉</div>
+                    <div class="player-info">
+                        <div class="player-name">8BallKing</div>
+                        <div class="player-stats">1,950 points • 82% win rate</div>
+                    </div>
+                    <div class="rank-points">1,950</div>
+                </div>
+                
+                <div class="ranking-item">
+                    <div class="rank-number">4</div>
+                    <div class="player-avatar">🎱</div>
+                    <div class="player-info">
+                        <div class="player-name">BreakShot</div>
+                        <div class="player-stats">1,720 points • 79% win rate</div>
+                    </div>
+                    <div class="rank-points">1,720</div>
+                </div>
+                
+                <div class="ranking-item">
+                    <div class="rank-number">5</div>
+                    <div class="player-avatar">⭐</div>
+                    <div class="player-info">
+                        <div class="player-name">PoolShark</div>
+                        <div class="player-stats">1,560 points • 76% win rate</div>
+                    </div>
+                    <div class="rank-points">1,560</div>
+                </div>
+                
+                <div class="ranking-item current-player">
+                    <div class="rank-number">12</div>
+                    <div class="player-avatar">👤</div>
+                    <div class="player-info">
+                        <div class="player-name">You</div>
+                        <div class="player-stats">1,200 points • 68% win rate</div>
+                    </div>
+                    <div class="rank-points">1,200</div>
+                </div>
+            </div>
+            
+            <div class="ranking-list" id="monthly-ranking" style="display: none;">
+                <div class="ranking-item top-player">
+                    <div class="rank-number">1</div>
+                    <div class="player-avatar">👑</div>
+                    <div class="player-info">
+                        <div class="player-name">MonthlyChamp</div>
+                        <div class="player-stats">8,750 points • 91% win rate</div>
+                    </div>
+                    <div class="rank-points">8,750</div>
+                </div>
+                
+                <div class="ranking-item">
+                    <div class="rank-number">2</div>
+                    <div class="player-avatar">🏆</div>
+                    <div class="player-info">
+                        <div class="player-name">PoolLegend</div>
+                        <div class="player-stats">7,890 points • 88% win rate</div>
+                    </div>
+                    <div class="rank-points">7,890</div>
+                </div>
+                
+                <div class="ranking-item current-player">
+                    <div class="rank-number">8</div>
+                    <div class="player-avatar">👤</div>
+                    <div class="player-info">
+                        <div class="player-name">You</div>
+                        <div class="player-stats">4,350 points • 72% win rate</div>
+                    </div>
+                    <div class="rank-points">4,350</div>
+                </div>
+            </div>
+            
+            <div class="ranking-list" id="alltime-ranking" style="display: none;">
+                <div class="ranking-item top-player">
+                    <div class="rank-number">1</div>
+                    <div class="player-avatar">👑</div>
+                    <div class="player-info">
+                        <div class="player-name">EternalChamp</div>
+                        <div class="player-stats">25,600 points • 89% win rate</div>
+                    </div>
+                    <div class="rank-points">25,600</div>
+                </div>
+                
+                <div class="ranking-item">
+                    <div class="rank-number">2</div>
+                    <div class="player-avatar">🏆</div>
+                    <div class="player-info">
+                        <div class="player-name">HallOfFamer</div>
+                        <div class="player-stats">23,450 points • 85% win rate</div>
+                    </div>
+                    <div class="rank-points">23,450</div>
+                </div>
+                
+                <div class="ranking-item current-player">
+                    <div class="rank-number">23</div>
+                    <div class="player-avatar">👤</div>
+                    <div class="player-info">
+                        <div class="player-name">You</div>
+                        <div class="player-stats">12,750 points • 71% win rate</div>
+                    </div>
+                    <div class="rank-points">12,750</div>
+                </div>
             </div>
         </div>
     </div>
@@ -460,6 +603,13 @@
         function startDailyBreak() {
             console.log('=== STARTING DAILY BREAK MINI-GAME ===');
             
+            // Hide bottom navigation bar during game
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav) {
+                bottomNav.style.display = 'none';
+                console.log('✅ Bottom navigation hidden for Daily Break');
+            }
+            
             // Set mini-game mode
             currentMiniGame = {
                 type: 'dailyBreak',
@@ -491,6 +641,13 @@
 
         function startPointDouble() {
             console.log('=== STARTING POINT DOUBLE MINI-GAME ===');
+            
+            // Hide bottom navigation bar during game
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav) {
+                bottomNav.style.display = 'none';
+                console.log('✅ Bottom navigation hidden for Point Double');
+            }
             
             // Set mini-game mode
             currentMiniGame = {
@@ -555,16 +712,30 @@
                     Game.initialize();
                 }
                 
-                // Start new game
+                // Start new game with immediate start (skip 5-second delay)
                 if (Game.startNewGame) {
-                    Game.startNewGame();
-                    console.log('✅ Original pool game started!');
+                    console.log('Starting game with custom initialization...');
                     
-                    // Force the main loop to start
-                    if (Game.mainLoop) {
-                        requestAnimationFrame(Game.mainLoop);
-                        console.log('✅ Game loop started');
+                    // Set cursor
+                    Canvas2D._canvas.style.cursor = "auto";
+                    
+                    // Create new game world and policy
+                    Game.gameWorld = new GameWorld();
+                    Game.policy = new GamePolicy();
+                    
+                    // Clear canvas and start immediately
+                    Canvas2D.clear();
+                    
+                    // Initialize AI
+                    AI.init(Game.gameWorld, Game.policy);
+                    
+                    if(AI_ON && AI_PLAYER_NUM == 0){
+                        AI.startSession();
                     }
+                    
+                    // Start main loop immediately
+                    Game.mainLoop();
+                    console.log('✅ Original pool game started immediately!');
                 } else {
                     console.error('❌ Game.startNewGame not available');
                 }
@@ -1171,6 +1342,68 @@
         function showProfile() {
             closeBottomDropdown();
             alert('Profile coming soon!');
+        }
+
+        function showRanking() {
+            closeBottomDropdown();
+            closeDropdownMenu(); // Also close top dropdown
+            
+            // Hide main interface
+            const mobileInterface = document.getElementById('mobile-interface');
+            const rankingPage = document.getElementById('ranking-page');
+            
+            if (mobileInterface) {
+                mobileInterface.style.display = 'none';
+            }
+            
+            if (rankingPage) {
+                rankingPage.style.display = 'block';
+            }
+            
+            console.log('Ranking page opened');
+        }
+
+        function hideRanking() {
+            const mobileInterface = document.getElementById('mobile-interface');
+            const rankingPage = document.getElementById('ranking-page');
+            
+            if (rankingPage) {
+                rankingPage.style.display = 'none';
+            }
+            
+            if (mobileInterface) {
+                mobileInterface.style.display = 'block';
+            }
+            
+            console.log('Ranking page closed');
+        }
+
+        function showRankingTab(tabName) {
+            // Hide all ranking lists
+            const rankingLists = document.querySelectorAll('.ranking-list');
+            rankingLists.forEach(list => {
+                list.style.display = 'none';
+            });
+            
+            // Remove active class from all tabs
+            const tabs = document.querySelectorAll('.ranking-tab');
+            tabs.forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected ranking list
+            const selectedList = document.getElementById(tabName + '-ranking');
+            if (selectedList) {
+                selectedList.style.display = 'block';
+            }
+            
+            // Add active class to selected tab
+            const selectedTab = event.target;
+            if (selectedTab) {
+                selectedTab.classList.add('active');
+            }
+            
+            console.log('Switched to', tabName, 'ranking tab');
         }
 
         function logout() {
