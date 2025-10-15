@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+    <title>Pool Game - Aim Shoot Mode</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" type="text/css" href="css/game-layout.css">
+</head>
+
+<body>
+    <div id="gameArea">
+        <canvas id="screen" width="1440" height="825"></canvas>
+    </div>
+
+    <script src="script/lib/LAB.min.js"></script>
+    <script>
+        // Define requestAnimationFrame for compatibility
+        var requestAnimationFrame = (function () {
+            return  window.requestAnimationFrame ||
+                window.webkitRequestAnimationFrame ||
+                window.mozRequestAnimationFrame ||
+                window.oRequestAnimationFrame ||
+                window.msRequestAnimationFrame ||
+                function (callback) {
+                    window.setTimeout(callback, 1000 / 60);
+                };
+        })();
+
+        // Create minimal Game object BEFORE loading any scripts that depend on it
+        window.Game = {
+            spritesStillLoading: 0,
+            loadSprite: function(imageSrc) {
+                Game.spritesStillLoading++;
+                var image = new Image();
+                image.src = imageSrc;
+                image.onload = function() {
+                    Game.spritesStillLoading--;
+                };
+                image.onerror = function() {
+                    console.error("Failed to load sprite:", imageSrc);
+                    Game.spritesStillLoading--;
+                };
+                return image;
+            }
+        };
+
+        // Initialize sprites and sounds objects
+        window.sprites = {};
+        window.sounds = {
+            // Create dummy audio objects to prevent errors
+            strike: {
+                cloneNode: function(deep) {
+                    return {
+                        play: function() { 
+                            console.log("Strike sound played (silent in aim mode)");
+                        },
+                        volume: 0,
+                        addEventListener: function() {},
+                        removeEventListener: function() {}
+                    };
+                }
+            },
+            hole: {
+                cloneNode: function(deep) {
+                    return {
+                        play: function() { 
+                            console.log("Hole sound played (silent in aim mode)");
+                        },
+                        volume: 0,
+                        addEventListener: function() {},
+                        removeEventListener: function() {}
+                    };
+                }
+            }
+        };
+        
+        // Define AI constants for Stick compatibility
+        window.AI_ON = false;
+        window.AI_PLAYER_NUM = 1;
+        
+        // Define sound constants for Ball.js compatibility
+        window.SOUND_ON = false; // Disable sounds in aim mode
+
+        $LAB
+            .script("script/system/Keys.js").wait()
+            .script("script/geom/Vector2.js").wait(function(){
+                // Set Game.size after Vector2 is loaded
+                Game.size = new Vector2(1440, 825);
+            })
+            .script("script/system/Color.js").wait()
+            .script("script/Global.js").wait()
+            .script("script/Canvas2D.js").wait()
+            .script("script/input/ButtonState.js").wait()
+            .script("script/input/Keyboard.js").wait()
+            .script("script/input/Mouse.js").wait()
+            .script("script/game_objects/Ball.js").wait()
+            .script("script/game_objects/NumberedBall.js").wait()
+            .script("script/game_objects/Score.js").wait()
+            .script("script/game_objects/Stick.js").wait(function(){
+                // Skip GamePolicy.js since it's complex - create minimal AimShootMode without it
+                
+                // Create Assets.load function
+                window.Assets = {
+                    load: function(callback) {
+                        console.log("Loading assets for aim shoot mode...");
+                        
+                        // Load essential sprites for aim mode - try background5 for proper pool table
+                        sprites.background = Game.loadSprite("assets/sprites/spr_background5.png");
+                        sprites.ball0 = Game.loadSprite("assets/Balls/style2/0.png"); // White ball
+                        sprites.ball8 = Game.loadSprite("assets/Balls/style2/8.png"); // Black ball
+                        sprites.stick = Game.loadSprite("assets/sprites/spr_stick.png");
+                        
+                        console.log("Sprites being loaded:");
+                        console.log("- Background:", sprites.background.src);
+                        console.log("- Ball 0:", sprites.ball0.src);
+                        console.log("- Ball 8:", sprites.ball8.src);
+                        console.log("- Stick:", sprites.stick.src);
+                        
+                        // Wait for all sprites to load
+                        var checkLoading = setInterval(function() {
+                            if (Game.spritesStillLoading === 0) {
+                                clearInterval(checkLoading);
+                                console.log("All sprites loaded successfully");
+                                
+                                // Check if sprites actually loaded
+                                console.log("Sprite loading status:");
+                                console.log("- Background loaded:", sprites.background.complete, sprites.background.naturalWidth + "x" + sprites.background.naturalHeight);
+                                console.log("- Ball 0 loaded:", sprites.ball0.complete, sprites.ball0.naturalWidth + "x" + sprites.ball0.naturalHeight);
+                                console.log("- Ball 8 loaded:", sprites.ball8.complete, sprites.ball8.naturalWidth + "x" + sprites.ball8.naturalHeight);
+                                console.log("- Stick loaded:", sprites.stick.complete, sprites.stick.naturalWidth + "x" + sprites.stick.naturalHeight);
+                                
+                                // Verify background specifically
+                                if (!sprites.background.complete || sprites.background.naturalWidth === 0) {
+                                    console.error("Background sprite failed to load! Check path: " + sprites.background.src);
+                                } else {
+                                    console.log("✅ Background sprite loaded successfully!");
+                                }
+                                
+                                callback();
+                            }
+                        }, 100);
+                    }
+                };
+                
+                // Define minimal AimShootMode directly in HTML to avoid conflicts
+                function AimShootMode() {
+                    this.whiteBallStartingPosition = new Vector2(413, 413);
+                    
+                    // Create only the white ball and black 8-ball for aim practice - ALL AT SAME Y LEVEL
+                    this.whiteBall = new NumberedBall(new Vector2(400, 400), 0); // Cue ball - same level
+                    this.blackBall = new NumberedBall(new Vector2(1000, 400), 8); // 8 ball target - same level
+
+                    // Only two balls in play for aim practice
+                    this.balls = [
+                        this.whiteBall, // Cue ball
+                        this.blackBall  // Target ball (8-ball)
+                    ];
+
+                    this.stick = new Stick(this.whiteBall.position);
+                    // Position cue stick UP to align with balls at Y=400
+                    this.stick.origin = new Vector2(970, -5); // Increased slightly for fine-tuning alignment
+                    this.stick.shotOrigin = new Vector2(950, 25); // Increased slightly for fine-tuning alignment
+                    // Create comprehensive Game.policy for Ball.js compatibility
+                    if (!Game.policy) {
+                        Game.policy = {
+                            turn: 0,
+                            turnPlayed: false,
+                            // Table borders (standard pool table dimensions)
+                            leftBorderX: 57,
+                            rightBorderX: 1383,
+                            topBorderY: 57,
+                            bottomBorderY: 768,
+                            // Hole detection - for aim mode, let's disable holes (return false)
+                            isInsideHole: function(position) {
+                                return false; // No holes in aim practice mode
+                            },
+                            // Border detection methods
+                            isXOutsideLeftBorder: function(position, origin) {
+                                return position.x - origin.x < this.leftBorderX;
+                            },
+                            isXOutsideRightBorder: function(position, origin) {
+                                return position.x + origin.x > this.rightBorderX;
+                            },
+                            isYOutsideTopBorder: function(position, origin) {
+                                return position.y - origin.y < this.topBorderY;
+                            },
+                            isYOutsideBottomBorder: function(position, origin) {
+                                return position.y + origin.y > this.bottomBorderY;
+                            },
+                            // Ball in hole handler - not needed for aim mode
+                            handleBallInHole: function(ball) {
+                                console.log("Ball would be in hole (disabled in aim mode)");
+                            }
+                        };
+                    }
+                    
+                    // Create Game.gameWorld reference for Stick compatibility
+                    Game.gameWorld = this;
+                }
+
+                AimShootMode.prototype.update = function (delta) {
+                    this.stick.update(delta);
+                    this.handleInput(delta);
+
+                    // Handle collision between white ball and black ball only
+                    this.handleCollision(this.whiteBall, this.blackBall, delta);
+
+                    // Update only our two balls
+                    this.whiteBall.update(delta);
+                    this.blackBall.update(delta);
+                };
+
+                AimShootMode.prototype.handleInput = function (delta) {
+                    this.stick.handleInput(delta);
+                };
+
+                AimShootMode.prototype.handleCollision = function(ball1, ball2, delta){
+                    // Check collision distance
+                    var distance = ball1.position.distanceFrom(ball2.position);
+                    
+                    // If balls are colliding (closer than ball size)
+                    if(distance < BALL_SIZE && distance > 0){
+                        console.log("Collision detected! Distance:", distance);
+                        
+                        // Calculate collision normal (direction from ball1 to ball2)
+                        var dx = ball2.position.x - ball1.position.x;
+                        var dy = ball2.position.y - ball1.position.y;
+                        var collisionNormal = new Vector2(dx / distance, dy / distance);
+                        
+                        // Separate balls to prevent overlap
+                        var overlap = BALL_SIZE - distance;
+                        var separationX = collisionNormal.x * overlap * 0.5;
+                        var separationY = collisionNormal.y * overlap * 0.5;
+                        
+                        ball1.position.x -= separationX;
+                        ball1.position.y -= separationY;
+                        ball2.position.x += separationX;
+                        ball2.position.y += separationY;
+                        
+                        // Calculate relative velocity
+                        var relativeVelX = ball1.velocity.x - ball2.velocity.x;
+                        var relativeVelY = ball1.velocity.y - ball2.velocity.y;
+                        
+                        // Dot product of relative velocity and collision normal
+                        var velocityAlongNormal = relativeVelX * collisionNormal.x + relativeVelY * collisionNormal.y;
+                        
+                        // Don't resolve if velocities are separating
+                        if(velocityAlongNormal > 0) return;
+                        
+                        // Apply collision - transfer momentum
+                        var restitution = 0.8; // Bounce factor
+                        var impulse = -(1 + restitution) * velocityAlongNormal;
+                        
+                        // Update velocities (assuming equal mass)
+                        ball1.velocity.x += impulse * collisionNormal.x * -1;
+                        ball1.velocity.y += impulse * collisionNormal.y * -1;
+                        ball2.velocity.x += impulse * collisionNormal.x;
+                        ball2.velocity.y += impulse * collisionNormal.y;
+                        
+                        // Set both balls as moving
+                        ball1.moving = true;
+                        ball2.moving = true;
+                        
+                        console.log("Ball 1 velocity after collision:", ball1.velocity);
+                        console.log("Ball 2 velocity after collision:", ball2.velocity);
+                    }
+                };
+
+                AimShootMode.prototype.draw = function () {
+                    // Try to draw background sprite using correct Canvas2D syntax
+                    if (sprites.background && sprites.background.complete && sprites.background.naturalWidth > 0) {
+                        Canvas2D.drawImage(sprites.background);
+                    } else {
+                        // Fill with green background color as fallback
+                        Canvas2D._canvasContext.fillStyle = '#0d4f2d'; // Dark green pool table color
+                        Canvas2D._canvasContext.fillRect(0, 0, Canvas2D._canvas.width, Canvas2D._canvas.height);
+                        console.log("Background sprite not loaded, using fallback color");
+                    }
+
+                    // Draw ONLY our two balls - no loops, no other balls
+                    this.whiteBall.draw();
+                    this.blackBall.draw();
+
+                    // Draw the cue stick
+                    this.stick.draw();
+                };
+
+                AimShootMode.prototype.isBlackBallPotted = function() {
+                    return this.blackBall.inHole;
+                };
+
+                AimShootMode.prototype.respawnBlackBall = function() {
+                    var randomX = 800 + Math.random() * 400;
+                    var randomY = 300 + Math.random() * 200;
+                    
+                    this.blackBall.position = new Vector2(randomX, randomY);
+                    this.blackBall.inHole = false;
+                    this.blackBall.velocity = Vector2.zero;
+                    this.blackBall.moving = false;
+                };
+
+                // Initialize the aim shoot mode WITHOUT any external dependencies
+                var aimShootMode;
+                
+                function startAimShootMode() {
+                    console.log("Starting aim shoot mode...");
+                    
+                    // Initialize Canvas2D with div and canvas IDs
+                    try {
+                        Canvas2D.initialize("gameArea", "screen");
+                        console.log("Canvas initialized successfully");
+                        console.log("Canvas size:", Canvas2D._canvas.width, "x", Canvas2D._canvas.height);
+                    } catch (error) {
+                        console.error("Canvas initialization failed:", error);
+                        return;
+                    }
+                    
+                    // Load assets first
+                    Assets.load(function() {
+                        console.log("Assets loaded successfully");
+                        console.log("Background sprite:", sprites.background);
+                        console.log("Ball sprites available:", sprites.ball0, sprites.ball8);
+                        
+                        // Create aim shoot mode instance
+                        aimShootMode = new AimShootMode();
+                        console.log("Aim Shoot Mode initialized with", aimShootMode.balls.length, "balls");
+                        console.log("White ball position:", aimShootMode.whiteBall.position);
+                        console.log("Black ball position:", aimShootMode.blackBall.position);
+                        
+                        // Start the game loop
+                        gameLoop();
+                    });
+                }
+
+                function gameLoop() {
+                    Canvas2D.clear();
+                    
+                    // Update and draw aim shoot mode
+                    aimShootMode.update(1/60);
+                    aimShootMode.draw();
+                    
+                    // Check if black ball is potted
+                    if (aimShootMode.isBlackBallPotted()) {
+                        // Respawn black ball for continued practice
+                        setTimeout(function() {
+                            aimShootMode.respawnBlackBall();
+                        }, 1000); // Wait 1 second before respawning
+                    }
+                    
+                    Mouse.reset();
+                    requestAnimationFrame(gameLoop);
+                }
+
+                // Start the aim shoot mode
+                startAimShootMode();
+            });
+    </script>
+</body>
+
+</html>
