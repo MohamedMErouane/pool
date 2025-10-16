@@ -359,6 +359,11 @@ GameWorld.prototype.handleBreakComplete = function() {
     // Show result overlay
     this.showBreakResult(result);
     
+    // AUTO-RESET: Reset the game after completion
+    setTimeout(() => {
+        this.reset(); // Reset balls and cue stick to starting positions
+    }, 1500);
+    
     // Return to main menu after delay
     setTimeout(() => {
         Game.initMenus(false);
@@ -399,6 +404,11 @@ GameWorld.prototype.handleAimShootComplete = function() {
     
     // Show result
     this.showAimShootResult(ballsPotted, totalReward);
+    
+    // AUTO-RESET: Reset the game after completion
+    setTimeout(() => {
+        this.reset(); // Reset balls and cue stick to starting positions
+    }, 1500);
     
     // Return to main menu after delay
     setTimeout(() => {
@@ -449,6 +459,11 @@ GameWorld.prototype.handlePowerShotComplete = function() {
     
     // Show result
     this.showPowerShotResult(ballsPotted, baseReward, doubleChance);
+    
+    // AUTO-RESET: Reset the game after completion
+    setTimeout(() => {
+        this.reset(); // Reset balls and cue stick to starting positions
+    }, 1500);
     
     // Return to main menu after delay
     setTimeout(() => {

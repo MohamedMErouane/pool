@@ -120,6 +120,23 @@
                     window.DISPLAY = true;
                     window.GAME_STOPPED = true; // Keep stopped until button is clicked
                     
+                    // Initialize sound system
+                    if (typeof Game !== 'undefined') {
+                        Game.sound = true;
+                        console.log('🔊 Sound system enabled in Game object');
+                    }
+                    if (typeof window.SOUND_ON !== 'undefined') {
+                        window.SOUND_ON = true;
+                        console.log('🔊 Global SOUND_ON flag enabled');
+                    }
+                    
+                    // Test sound availability
+                    if (typeof sounds !== 'undefined' && sounds.hole) {
+                        console.log('🔊 Hole sound asset loaded successfully');
+                    } else {
+                        console.log('⚠️ Hole sound asset not found');
+                    }
+                    
                     console.log('✅ Game system initialized, waiting for button click');
                 }, 1000);
                 
@@ -640,7 +657,89 @@
         }
 
         function startPointDouble() {
-            console.log('=== STARTING POINT DOUBLE MINI-GAME ===');
+            console.log('=== STARTING POINT DOUBLE INPUT SYSTEM ===');
+            
+            // Show Point Double input modal
+            showPointDoubleInputModal();
+        }
+        
+        function showPointDoubleInputModal() {
+            // Create modal overlay
+            const modalOverlay = document.createElement('div');
+            modalOverlay.id = 'point-double-modal';
+            modalOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            `;
+            
+            // Create modal content
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = `
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 30px;
+                border-radius: 15px;
+                text-align: center;
+                color: white;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+                max-width: 400px;
+                width: 90%;
+            `;
+            
+            modalContent.innerHTML = `
+                <h2 style="margin: 0 0 20px 0; font-size: 24px;">🎯 Point Challenge</h2>
+                <p style="margin: 0 0 20px 0; font-size: 16px;">Enter the number of points you want to wager.<br>Win and DOUBLE your points!</p>
+                
+                <div style="margin: 20px 0;">
+                    <label style="display: block; margin-bottom: 10px; font-size: 14px;">Challenge Amount:</label>
+                    <input type="number" id="point-input" min="1" max="1000" value="10" 
+                           style="width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 18px; text-align: center; outline: none;">
+                </div>
+                
+                <div style="margin-top: 25px;">
+                    <button id="challenge-btn" onclick="startPointDoubleChallenge()" 
+                            style="background: #ff6b6b; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-right: 10px;">
+                        Challenge
+                    </button>
+                    <button onclick="closePointDoubleModal()" 
+                            style="background: #6c757d; color: white; border: none; padding: 15px 20px; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                        Cancel
+                    </button>
+                </div>
+            `;
+            
+            modalOverlay.appendChild(modalContent);
+            document.body.appendChild(modalOverlay);
+            
+            // Focus on input
+            setTimeout(() => {
+                const input = document.getElementById('point-input');
+                if (input) input.focus();
+            }, 100);
+        }
+        
+        function startPointDoubleChallenge() {
+            const pointInput = document.getElementById('point-input');
+            const challengeAmount = parseInt(pointInput.value) || 10;
+            
+            console.log('=== STARTING POINT DOUBLE CHALLENGE ===');
+            console.log('Challenge amount:', challengeAmount);
+            
+            // Store challenge amount globally
+            window.pointDoubleChallenge = {
+                amount: challengeAmount,
+                active: true
+            };
+            
+            // Close modal
+            closePointDoubleModal();
             
             // Hide bottom navigation bar during game
             const bottomNav = document.querySelector('.bottom-nav');
@@ -652,13 +751,14 @@
             // Set mini-game mode
             currentMiniGame = {
                 type: 'pointDouble',
-                objective: 'Pot one ball for double points!',
-                completed: false
+                objective: `Pot one ball to win ${challengeAmount * 2} points!`,
+                completed: false,
+                challengeAmount: challengeAmount
             };
             
-            console.log('Point Double mini-game set:', currentMiniGame);
+            console.log('Point Double challenge set:', currentMiniGame);
             
-            // Show game canvas container (same as test canvas)
+            // Show game canvas container
             const gameCanvasContainer = document.getElementById('game-canvas-container');
             console.log('Game canvas container found:', !!gameCanvasContainer);
             
@@ -674,8 +774,15 @@
             startOriginalGame();
             
             // Show objective
-            showMiniGameObjective('Point Double Challenge', 'Pot any ball in one shot for DOUBLE rewards!');
-            console.log('Point Double setup complete');
+            showMiniGameObjective('Point Double Challenge', `Pot any ball in one shot to win ${challengeAmount * 2} points!`);
+            console.log('Point Double challenge setup complete');
+        }
+        
+        function closePointDoubleModal() {
+            const modal = document.getElementById('point-double-modal');
+            if (modal) {
+                modal.remove();
+            }
         }
 
         // Track if game is already running
@@ -829,14 +936,34 @@
         }
         
         function handlePointDoubleComplete(pottedBalls) {
-            let message = `Point Double completed!\\n`;
+            const challengeAmount = window.pointDoubleChallenge ? window.pointDoubleChallenge.amount : 10;
+            let message = `Point Double Challenge completed!\\n`;
             
             if (pottedBalls > 0) {
-                const doublePoints = pottedBalls * 40; // Double the normal points
-                message += `AMAZING! You potted ${pottedBalls} ball(s)!\\nDouble points: ${doublePoints} points!`;
+                const winAmount = challengeAmount * 2; // Double the challenge amount
+                message += `🎉 WINNER! You potted ${pottedBalls} ball(s)!\\n`;
+                message += `Challenge Amount: ${challengeAmount} points\\n`;
+                message += `You WON: ${winAmount} points!`;
+                
+                // Add the won points to user's total
+                if (typeof DailyReward !== 'undefined') {
+                    DailyReward.totalTokens += winAmount;
+                    localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
+                }
             } else {
-                message += `No balls potted this time. Try again for double rewards!\\nYou earned 2 participation points.`;
+                message += `😞 No balls potted this time.\\n`;
+                message += `You lost ${challengeAmount} points.\\n`;
+                message += `Try again to win double!`;
+                
+                // Deduct the challenge amount (they lost the bet)
+                if (typeof DailyReward !== 'undefined') {
+                    DailyReward.totalTokens = Math.max(0, DailyReward.totalTokens - challengeAmount);
+                    localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
+                }
             }
+            
+            // Clear challenge data
+            window.pointDoubleChallenge = null;
             
             setTimeout(() => {
                 alert(message);

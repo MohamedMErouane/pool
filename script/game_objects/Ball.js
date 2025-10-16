@@ -77,11 +77,22 @@ Ball.prototype.updatePosition = function(delta){
 
 
 	if(Game.policy.isInsideHole(newPos)){
-        if(Game.sound && SOUND_ON){
-            var holeSound = sounds.hole.cloneNode(true);
-            holeSound.volume = 0.5;
-            holeSound.play();
+        // Enhanced sound system with fallback and better audio handling
+        if(Game.sound && SOUND_ON && sounds && sounds.hole){
+            try {
+                var holeSound = sounds.hole.cloneNode(true);
+                holeSound.volume = 0.7; // Increased volume for better audibility
+                holeSound.play().catch(function(error) {
+                    console.log("Audio play failed (user interaction required):", error);
+                });
+                console.log("🔊 Ball-in-hole sound played successfully!");
+            } catch(error) {
+                console.log("Sound system error:", error);
+            }
+        } else {
+            console.log("🔇 Sound disabled or not available - Game.sound:", Game.sound, "SOUND_ON:", SOUND_ON, "sounds.hole:", !!sounds.hole);
         }
+        
 		this.position = newPos;
         this.inHole = true;
         
