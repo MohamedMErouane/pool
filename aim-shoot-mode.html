@@ -9,6 +9,16 @@
 </head>
 
 <body>
+    <!-- Score Display -->
+    <div id="aim-score" style="position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 25px; font-size: 18px; font-weight: bold; z-index: 1000; box-shadow: 0 3px 10px rgba(0,0,0,0.5);">
+        Balls Pocketed: 0
+    </div>
+    
+    <!-- Back Button -->
+    <a href="index.html" style="position: absolute; top: 20px; right: 20px; background: rgba(255,0,0,0.8); color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-size: 16px; font-weight: bold; z-index: 1000; box-shadow: 0 3px 10px rgba(0,0,0,0.5);">
+        ← Back to Main
+    </a>
+    
     <div id="gameArea">
         <canvas id="screen" width="1440" height="825"></canvas>
     </div>
@@ -30,6 +40,7 @@
         // Create minimal Game object BEFORE loading any scripts that depend on it
         window.Game = {
             spritesStillLoading: 0,
+            aimModeScore: 0, // Track score in aim mode
             loadSprite: function(imageSrc) {
                 Game.spritesStillLoading++;
                 var image = new Image();
@@ -42,6 +53,12 @@
                     Game.spritesStillLoading--;
                 };
                 return image;
+            },
+            updateAimScore: function() {
+                const scoreElement = document.getElementById('aim-score');
+                if (scoreElement) {
+                    scoreElement.textContent = `Balls Pocketed: ${Game.aimModeScore}`;
+                }
             }
         };
 
@@ -65,9 +82,29 @@
                 cloneNode: function(deep) {
                     return {
                         play: function() { 
-                            console.log("Hole sound played (silent in aim mode)");
+                            console.log("🔊 Ball in hole! (aim mode)");
+                            // Play a simple success sound or beep
+                            try {
+                                // Create a simple success audio feedback
+                                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                                const oscillator = audioContext.createOscillator();
+                                const gainNode = audioContext.createGain();
+                                
+                                oscillator.connect(gainNode);
+                                gainNode.connect(audioContext.destination);
+                                
+                                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                                oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
+                                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                                
+                                oscillator.start(audioContext.currentTime);
+                                oscillator.stop(audioContext.currentTime + 0.2);
+                            } catch (error) {
+                                console.log("Audio feedback not available:", error);
+                            }
                         },
-                        volume: 0,
+                        volume: 0.5,
                         addEventListener: function() {},
                         removeEventListener: function() {}
                     };
@@ -171,9 +208,29 @@
                             rightBorderX: 1383,
                             topBorderY: 57,
                             bottomBorderY: 768,
-                            // Hole detection - for aim mode, let's disable holes (return false)
+                            // Hole detection - enable holes for aim practice mode
                             isInsideHole: function(position) {
-                                return false; // No holes in aim practice mode
+                                // Define hole positions (same as main game)
+                                const holes = [
+                                    {x: 70, y: 70, radius: 25},      // Top-left
+                                    {x: 720, y: 57, radius: 25},     // Top-center  
+                                    {x: 1370, y: 70, radius: 25},   // Top-right
+                                    {x: 70, y: 755, radius: 25},    // Bottom-left
+                                    {x: 720, y: 768, radius: 25},   // Bottom-center
+                                    {x: 1370, y: 755, radius: 25}   // Bottom-right
+                                ];
+                                
+                                // Check if ball position is inside any hole
+                                for (let hole of holes) {
+                                    const distance = Math.sqrt(
+                                        Math.pow(position.x - hole.x, 2) + 
+                                        Math.pow(position.y - hole.y, 2)
+                                    );
+                                    if (distance <= hole.radius) {
+                                        return true;
+                                    }
+                                }
+                                return false;
                             },
                             // Border detection methods
                             isXOutsideLeftBorder: function(position, origin) {
@@ -188,9 +245,64 @@
                             isYOutsideBottomBorder: function(position, origin) {
                                 return position.y + origin.y > this.bottomBorderY;
                             },
-                            // Ball in hole handler - not needed for aim mode
+                            // Ball in hole handler - handle scoring in aim mode
                             handleBallInHole: function(ball) {
-                                console.log("Ball would be in hole (disabled in aim mode)");
+                                console.log("Ball scored in hole! (aim mode)");
+                                
+                                // Track the scored ball
+                                if (ball && !ball.counted) {
+                                    ball.counted = true; // Prevent double counting
+                                    
+                                    // Increment score
+                                    Game.aimModeScore++;
+                                    Game.updateAimScore();
+                                    
+                                    console.log(`Ball successfully pocketed! Score: ${Game.aimModeScore}`);
+                                    
+                                    // Show visual feedback
+                                    this.showScoreMessage("🎯 GREAT SHOT! +1");
+                                }
+                            },
+                            
+                            // Show score message
+                            showScoreMessage: function(message) {
+                                // Create floating score message
+                                const scoreMsg = document.createElement('div');
+                                scoreMsg.style.cssText = `
+                                    position: fixed;
+                                    top: 20%;
+                                    left: 50%;
+                                    transform: translateX(-50%);
+                                    background: linear-gradient(45deg, #00ff88, #00cc66);
+                                    color: white;
+                                    padding: 15px 30px;
+                                    border-radius: 25px;
+                                    font-size: 24px;
+                                    font-weight: bold;
+                                    z-index: 10000;
+                                    box-shadow: 0 5px 15px rgba(0,255,136,0.4);
+                                    animation: scoreFloat 2s ease-out forwards;
+                                `;
+                                scoreMsg.textContent = message;
+                                
+                                // Add animation
+                                const style = document.createElement('style');
+                                style.textContent = `
+                                    @keyframes scoreFloat {
+                                        0% { opacity: 1; transform: translateX(-50%) translateY(0px) scale(1.2); }
+                                        50% { transform: translateX(-50%) translateY(-30px) scale(1); }
+                                        100% { opacity: 0; transform: translateX(-50%) translateY(-60px) scale(0.8); }
+                                    }
+                                `;
+                                document.head.appendChild(style);
+                                document.body.appendChild(scoreMsg);
+                                
+                                // Remove after animation
+                                setTimeout(() => {
+                                    if (scoreMsg.parentNode) {
+                                        scoreMsg.parentNode.removeChild(scoreMsg);
+                                    }
+                                }, 2000);
                             }
                         };
                     }

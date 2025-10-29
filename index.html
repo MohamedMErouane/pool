@@ -7,6 +7,8 @@
     <link rel="stylesheet" type="text/css" href="css/game-layout.css"/>
     <link rel="shortcut icon" type="image/png" href="assets/sprites/favicon.png"/>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <!-- QR Code Generator -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <!-- Solana Web3.js for real wallet integration -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
 
@@ -48,6 +50,7 @@
             .script('script/MiniGames.js').wait()
             .script('script/SolanaWallet.js').wait()
             .script('script/RewardsDashboard.js').wait()
+            .script('script/ReferralSystem.js').wait()
             .script('script/Game.js').wait()
             .script('script/Assets.js').wait(function () {
                 // Initialize socket connection
@@ -138,6 +141,20 @@
                     }
                     
                     console.log('✅ Game system initialized, waiting for button click');
+                    
+                    // Initialize referral system
+                    if (typeof window.initializeReferralSystem === 'function') {
+                        window.initializeReferralSystem();
+                        console.log('🔗 Referral system initialization called');
+                    } else {
+                        console.log('⚠️ Referral system function not found, will retry...');
+                        setTimeout(() => {
+                            if (typeof window.initializeReferralSystem === 'function') {
+                                window.initializeReferralSystem();
+                                console.log('🔗 Referral system initialized on retry');
+                            }
+                        }, 500);
+                    }
                 }, 1000);
                 
                                 
@@ -245,17 +262,10 @@
                     <span class="menu-icon">🎁</span>
                     <span class="menu-text">Rewards</span>
                 </a>
-                <a href="#" class="menu-item">
-                    <span class="menu-icon">💎</span>
-                    <span class="menu-text">Shop</span>
-                </a>
+               
                 <a href="#" class="menu-item">
                     <span class="menu-icon">⚙️</span>
                     <span class="menu-text">Settings</span>
-                </a>
-                <a href="#" class="menu-item">
-                    <span class="menu-icon">📞</span>
-                    <span class="menu-text">Support</span>
                 </a>
             </div>
             
@@ -729,53 +739,50 @@
             const pointInput = document.getElementById('point-input');
             const challengeAmount = parseInt(pointInput.value) || 10;
             
-            console.log('=== STARTING POINT DOUBLE CHALLENGE ===');
+            console.log('=== PROCESSING POINT DOUBLE CHALLENGE ===');
             console.log('Challenge amount:', challengeAmount);
             
-            // Store challenge amount globally
-            window.pointDoubleChallenge = {
-                amount: challengeAmount,
-                active: true
-            };
-            
-            // Close modal
+            // Close modal first
             closePointDoubleModal();
             
-            // Hide bottom navigation bar during game
-            const bottomNav = document.querySelector('.bottom-nav');
-            if (bottomNav) {
-                bottomNav.style.display = 'none';
-                console.log('✅ Bottom navigation hidden for Point Double');
-            }
+            // Simulate the challenge result (50% chance to win)
+            const won = Math.random() < 0.5;
+            let message;
             
-            // Set mini-game mode
-            currentMiniGame = {
-                type: 'pointDouble',
-                objective: `Pot one ball to win ${challengeAmount * 2} points!`,
-                completed: false,
-                challengeAmount: challengeAmount
-            };
-            
-            console.log('Point Double challenge set:', currentMiniGame);
-            
-            // Show game canvas container
-            const gameCanvasContainer = document.getElementById('game-canvas-container');
-            console.log('Game canvas container found:', !!gameCanvasContainer);
-            
-            if (gameCanvasContainer) {
-                gameCanvasContainer.style.display = 'flex';
-                console.log('✅ Game canvas container shown for Point Double');
+            if (won) {
+                const winAmount = challengeAmount * 2;
+                message = `🎉 WINNER! You won the Point Double Challenge!\\n\\n`;
+                message += `Challenge Amount: ${challengeAmount} points\\n`;
+                message += `You WON: ${winAmount} points!`;
+                
+                // Add the won points to user's total
+                if (typeof DailyReward !== 'undefined') {
+                    DailyReward.totalTokens += winAmount;
+                    localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
+                }
             } else {
-                console.error('❌ Game canvas container not found!');
+                message = `😞 You lost the Point Double Challenge.\\n\\n`;
+                message += `Challenge Amount: ${challengeAmount} points\\n`;
+                message += `You LOST: ${challengeAmount} points.\\n`;
+                message += `Better luck next time!`;
+                
+                // Deduct the challenge amount (they lost the bet)
+                if (typeof DailyReward !== 'undefined') {
+                    DailyReward.totalTokens = Math.max(0, DailyReward.totalTokens - challengeAmount);
+                    localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
+                }
             }
             
-            // Start the original pool game
-            console.log('About to start original game for Point Double...');
-            startOriginalGame();
+            // Show result and stay on main page
+            setTimeout(() => {
+                alert(message);
+                // Update points display if available
+                if (typeof updatePointsDisplay === 'function') {
+                    updatePointsDisplay();
+                }
+            }, 500);
             
-            // Show objective
-            showMiniGameObjective('Point Double Challenge', `Pot any ball in one shot to win ${challengeAmount * 2} points!`);
-            console.log('Point Double challenge setup complete');
+            console.log('Point Double challenge completed - staying on main page');
         }
         
         function closePointDoubleModal() {
@@ -1312,8 +1319,197 @@
         }
 
         function showReferral() {
-            showModal("Referral System", "Invite Friends & Earn Together!\n\nRewards:\n• 10% of friend's earnings\n• Exclusive bonus challenges\n• Team tournaments\n• VIP status unlocks\n\nShare your referral code and build your network!\n\nComing soon!");
+            // Try to initialize referral system if not ready
+            if (!ReferralManager && typeof window.initializeReferralSystem === 'function') {
+                console.log('🔗 Attempting to initialize referral system...');
+                window.initializeReferralSystem();
+            }
+            
+            // Check again after initialization attempt
+            if (!ReferralManager) {
+                console.log('❌ ReferralManager still not available');
+                alert("Referral system is still loading. Please try again in a moment.");
+                
+                // Force retry in 2 seconds
+                setTimeout(() => {
+                    if (typeof window.initializeReferralSystem === 'function') {
+                        window.initializeReferralSystem();
+                        console.log('🔗 Forced referral system initialization');
+                    }
+                }, 2000);
+                return;
+            }
+            
+            console.log('✅ ReferralManager is ready, showing interface...');
+            
+            // Get latest referral stats
+            const stats = ReferralManager.getReferralStats();
+            
+            // Create referral interface modal
+            const modalOverlay = document.createElement('div');
+            modalOverlay.id = 'referral-modal';
+            modalOverlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.9);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+                overflow-y: auto;
+            `;
+            
+            const modalContent = document.createElement('div');
+            modalContent.style.cssText = `
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 30px;
+                border-radius: 20px;
+                color: white;
+                box-shadow: 0 25px 50px rgba(0,0,0,0.7);
+                max-width: 500px;
+                width: 90%;
+                max-height: 90vh;
+                overflow-y: auto;
+            `;
+            
+            modalContent.innerHTML = `
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <h2 style="margin: 0; font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">🔗 Referral System</h2>
+                    <p style="margin: 10px 0 0 0; opacity: 0.9;">Invite friends & earn together!</p>
+                </div>
+                
+                <!-- Referral Stats -->
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; margin-bottom: 25px;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 18px;">📊 Your Stats</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #ffd700;">${stats.totalReferred}</div>
+                            <div style="font-size: 12px; opacity: 0.8;">Friends Referred</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 24px; font-weight: bold; color: #00ff88;">${stats.totalEarned}</div>
+                            <div style="font-size: 12px; opacity: 0.8;">Tokens Earned</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Referral Code -->
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; margin-bottom: 25px;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 18px;">🎯 Your Referral Code</h3>
+                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; text-align: center; font-family: monospace; font-size: 20px; font-weight: bold; letter-spacing: 2px; border: 2px dashed rgba(255,255,255,0.3);">
+                        ${stats.referralCode}
+                    </div>
+                    <button onclick="ReferralManager.copyToClipboard('${stats.referralCode}')" 
+                            style="width: 100%; margin-top: 10px; background: #28a745; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; cursor: pointer;">
+                        📋 Copy Code
+                    </button>
+                </div>
+                
+                <!-- Referral Link -->
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; margin-bottom: 25px;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 18px;">🔗 Share Your Link</h3>
+                    <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; word-break: break-all; font-size: 12px; margin-bottom: 15px;">
+                        ${ReferralManager.getReferralLink()}
+                    </div>
+                    
+                    <!-- QR Code Section -->
+                    <div style="text-align: center; margin-bottom: 15px;">
+                        <div id="qr-code-container" style="background: white; padding: 15px; border-radius: 10px; display: inline-block; margin-bottom: 10px;"></div>
+                        <div style="font-size: 12px; opacity: 0.8;">Scan to join with your referral code</div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                        <button onclick="ReferralManager.shareReferral('twitter')" 
+                                style="background: #1da1f2; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 12px; cursor: pointer;">
+                            🐦 Twitter
+                        </button>
+                        <button onclick="ReferralManager.shareReferral('facebook')" 
+                                style="background: #4267B2; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 12px; cursor: pointer;">
+                            📘 Facebook
+                        </button>
+                        <button onclick="ReferralManager.shareReferral('whatsapp')" 
+                                style="background: #25D366; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 12px; cursor: pointer;">
+                            💬 WhatsApp
+                        </button>
+                        <button onclick="ReferralManager.shareReferral('telegram')" 
+                                style="background: #0088cc; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 12px; cursor: pointer;">
+                            ✈️ Telegram
+                        </button>
+                    </div>
+                    
+                    <button onclick="ReferralManager.copyToClipboard(ReferralManager.getReferralLink())" 
+                            style="width: 100%; background: #17a2b8; color: white; border: none; padding: 12px; border-radius: 8px; font-size: 14px; cursor: pointer;">
+                        📋 Copy Link
+                    </button>
+                </div>
+                
+                <!-- Rewards Info -->
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; margin-bottom: 25px;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 18px;">💰 Reward System</h3>
+                    <div style="font-size: 14px; line-height: 1.6;">
+                        <div style="margin-bottom: 8px;">• <strong>New Friend Joins:</strong> You get 100 tokens</div>
+                        <div style="margin-bottom: 8px;">• <strong>Friend Gets Bonus:</strong> They get 50 tokens</div>
+                        <div style="margin-bottom: 8px;">• <strong>Lifetime Earnings:</strong> 10% of friend's winnings</div>
+                        <div>• <strong>VIP Status:</strong> Unlock exclusive features</div>
+                    </div>
+                </div>
+                
+                ${stats.referredUsers.length > 0 ? `
+                <!-- Referred Friends List -->
+                <div style="background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; margin-bottom: 25px;">
+                    <h3 style="margin: 0 0 15px 0; font-size: 18px;">👥 Your Referrals</h3>
+                    <div style="max-height: 150px; overflow-y: auto;">
+                        ${stats.referredUsers.map(user => `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                <div>
+                                    <div style="font-weight: bold;">User ${user.userId.substr(-8)}</div>
+                                    <div style="font-size: 12px; opacity: 0.7;">Joined ${new Date(user.joinedAt).toLocaleDateString()}</div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div style="color: #00ff88; font-weight: bold;">${user.totalEarnings} tokens</div>
+                                    <div style="font-size: 12px; opacity: 0.7;">${user.status}</div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <!-- Close Button -->
+                <div style="text-align: center;">
+                    <button onclick="closeReferralModal()" 
+                            style="background: #dc3545; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                        ✕ Close
+                    </button>
+                </div>
+            `;
+            
+            modalOverlay.appendChild(modalContent);
+            document.body.appendChild(modalOverlay);
+            
+            // Generate QR code after modal is in DOM
+            setTimeout(() => {
+                ReferralManager.generateQRCode('qr-code-container');
+            }, 100);
+            
             setActiveNav(3);
+        }
+        
+        function closeReferralModal() {
+            const modal = document.getElementById('referral-modal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+        
+        function closeWelcomeReferralModal() {
+            const modal = document.getElementById('welcome-referral-modal');
+            if (modal) {
+                modal.remove();
+            }
         }
 
         function showCheckin() {
