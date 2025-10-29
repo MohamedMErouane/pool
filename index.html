@@ -7,8 +7,9 @@
     <link rel="stylesheet" type="text/css" href="css/game-layout.css"/>
     <link rel="shortcut icon" type="image/png" href="assets/sprites/favicon.png"/>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <!-- QR Code Generator -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <!-- QR Code Generator with fallback -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" 
+            onerror="this.onerror=null; this.src='https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js'"></script>
     <!-- Solana Web3.js for real wallet integration -->
     <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
 
@@ -1417,8 +1418,18 @@
                     
                     <!-- QR Code Section -->
                     <div style="text-align: center; margin-bottom: 15px;">
-                        <div id="qr-code-container" style="background: white; padding: 15px; border-radius: 10px; display: inline-block; margin-bottom: 10px;"></div>
-                        <div style="font-size: 12px; opacity: 0.8;">Scan to join with your referral code</div>
+                        <div id="qr-code-container" style="background: white; padding: 15px; border-radius: 10px; display: inline-block; margin-bottom: 10px; min-height: 200px; min-width: 200px; display: flex; align-items: center; justify-content: center;"></div>
+                        <div style="font-size: 12px; opacity: 0.8; margin-bottom: 10px;">Scan to join with your referral code</div>
+                        <div style="display: flex; gap: 10px; justify-content: center;">
+                            <button onclick="ReferralManager.copyToClipboard(ReferralManager.getReferralLink())" 
+                                    style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+                                📋 Copy Link
+                            </button>
+                            <button onclick="ReferralManager.generateQRCode('qr-code-container')" 
+                                    style="background: #6c757d; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+                                🔄 Retry QR Code
+                            </button>
+                        </div>
                     </div>
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">

@@ -388,33 +388,112 @@ ReferralSystem.prototype.shareReferral = function(platform) {
 // Generate QR code for referral link
 ReferralSystem.prototype.generateQRCode = function(containerId) {
     const referralLink = this.getReferralLink();
+    console.log('🔗 Generating QR code for:', referralLink);
+    
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.error('QR container not found:', containerId);
+        return;
+    }
+    
+    // Clear existing content
+    container.innerHTML = '';
+    
+    // Check if QRCode library is available
+    console.log('QRCode library check:', typeof QRCode);
     
     if (typeof QRCode !== 'undefined') {
-        const container = document.getElementById(containerId);
-        if (container) {
-            container.innerHTML = ''; // Clear existing QR code
-            QRCode.toCanvas(container, referralLink, {
-                width: 200,
-                margin: 2,
+        try {
+            console.log('✅ QRCode library found, generating...');
+            
+            // Create a canvas element
+            const canvas = document.createElement('canvas');
+            container.appendChild(canvas);
+            
+            // Generate QR code on the canvas
+            QRCode.toCanvas(canvas, referralLink, {
+                width: 180,
+                height: 180,
+                margin: 1,
                 color: {
                     dark: '#000000',
                     light: '#FFFFFF'
-                }
+                },
+                errorCorrectionLevel: 'M'
             }, function (error) {
                 if (error) {
-                    console.error('QR Code generation failed:', error);
-                    container.innerHTML = '<p style="color: red;">QR Code generation failed</p>';
+                    console.error('❌ QR Code generation failed:', error);
+                    container.innerHTML = `
+                        <div style="color: #ff6b6b; text-align: center; padding: 20px;">
+                            <div style="font-size: 48px;">📱</div>
+                            <div>QR Code Error</div>
+                            <div style="font-size: 12px; margin-top: 5px;">Copy link instead</div>
+                        </div>
+                    `;
                 } else {
-                    console.log('QR Code generated successfully');
+                    console.log('✅ QR Code generated successfully');
                 }
             });
+        } catch (error) {
+            console.error('❌ QR Code creation error:', error);
+            // Try alternative approach with QR API
+            this.generateQRCodeWithAPI(container, referralLink);
         }
     } else {
-        console.warn('QRCode library not loaded');
-        const container = document.getElementById(containerId);
-        if (container) {
-            container.innerHTML = '<p style="color: yellow;">QR Code library loading...</p>';
-        }
+        console.warn('⚠️ QRCode library not loaded, trying alternative method');
+        // Use online QR code API as fallback
+        this.generateQRCodeWithAPI(container, referralLink);
+    }
+};
+
+// Alternative QR code generation using online API
+ReferralSystem.prototype.generateQRCodeWithAPI = function(container, url) {
+    console.log('🌐 Generating QR code using API fallback');
+    
+    try {
+        // Use QR Server API as fallback
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}`;
+        
+        const img = document.createElement('img');
+        img.src = qrUrl;
+        img.style.cssText = 'width: 180px; height: 180px; border-radius: 8px;';
+        img.alt = 'Referral QR Code';
+        
+        img.onload = function() {
+            console.log('✅ QR Code loaded via API');
+            container.innerHTML = '';
+            container.appendChild(img);
+        };
+        
+        img.onerror = function() {
+            console.error('❌ API QR Code failed');
+            container.innerHTML = `
+                <div style="color: #ffd700; text-align: center; padding: 20px;">
+                    <div style="font-size: 48px;">📱</div>
+                    <div>Use Link Instead</div>
+                    <div style="font-size: 12px; margin-top: 5px;">QR temporarily unavailable</div>
+                </div>
+            `;
+        };
+        
+        // Show loading while image loads
+        container.innerHTML = `
+            <div style="color: #17a2b8; text-align: center; padding: 20px;">
+                <div style="font-size: 48px;">⏳</div>
+                <div>Loading QR Code...</div>
+                <div style="font-size: 12px; margin-top: 5px;">Please wait</div>
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('❌ API QR Code generation failed:', error);
+        container.innerHTML = `
+            <div style="color: #ff6b6b; text-align: center; padding: 20px;">
+                <div style="font-size: 48px;">📱</div>
+                <div>Copy Link Instead</div>
+                <div style="font-size: 12px; margin-top: 5px;">QR Code unavailable</div>
+            </div>
+        `;
     }
 };
 
