@@ -1,43 +1,23 @@
-# Dependencies
-node_modules/
+# Pool Game - Static Files Only
 
 # Server files (not needed for static deployment)
 server.js
 package.json
 package-lock.json
+node_modules/
 
-# Logs
+# Development files
+.env*
 *.log
-npm-debug.log*
 
-# Runtime data
-pids
-*.pid
-*.seed
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# IDE
+# IDE files
 .vscode/
 .idea/
 
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# Temporary files
-*.tmp
-*.temp
-
-# Documentation (keep README.md)
+# Documentation
 *.md
 !README.md
-
-# Git
-.git/
-.gitignore
