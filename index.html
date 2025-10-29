@@ -912,13 +912,32 @@
         }
         
         function handleDailyBreakComplete(pottedBalls) {
+            console.log('=== DAILY BREAK COMPLETED ===');
+            console.log('Potted balls:', pottedBalls);
+            
+            // Perform daily check-in with DailyReward system
+            const result = DailyReward.performDailyCheckIn();
+            console.log('Daily reward result:', result);
+            
             let message = `Break shot completed!\\n`;
             message += `Balls potted: ${pottedBalls}\\n`;
             
-            if (pottedBalls > 0) {
-                message += `Excellent break! You earned ${pottedBalls * 10} bonus points!`;
+            if (result.success) {
+                const bonusPoints = pottedBalls * 5; // Bonus for balls potted
+                const totalReward = result.reward + bonusPoints;
+                
+                // Add bonus to total tokens
+                DailyReward.totalTokens += bonusPoints;
+                localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
+                
+                message += `🎉 Daily Break completed! You earned ${totalReward} tokens!\\n`;
+                message += `Base reward: ${result.reward} tokens\\n`;
+                if (bonusPoints > 0) {
+                    message += `Bonus for ${pottedBalls} balls: ${bonusPoints} tokens\\n`;
+                }
+                message += `Total tokens: ${DailyReward.totalTokens}`;
             } else {
-                message += `Good break! You earned 5 participation points.`;
+                message += `\\n${result.message}`;
             }
             
             setTimeout(() => {
