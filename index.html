@@ -53,65 +53,9 @@
             .script('script/ReferralSystem.js').wait()
             .script('script/Game.js').wait()
             .script('script/Assets.js').wait(function () {
-                // Initialize socket connection
-                socket = io('http://localhost:3008');
+                // Single-player mode initialization (socket.io disabled for Vercel)
+                console.log('🎮 Initializing single-player mode');
                 
-                // Setup socket events
-                socket.on('connect', () => {
-                    mySocketId = socket.id;
-                    console.log("Connected:", mySocketId);
-                });
-
-                socket.on('waitingForOpponent', () => {
-                    document.getElementById('status').textContent = "Waiting for opponent...";
-                });
-
-                socket.on('startGame', ({ roomCode, firstTurn, player1Id, player2Id }) => {
-    isMultiplayer = true;
-    document.getElementById('status').textContent = "Game started!";
-
-    // Set match metadata
-    const matchId = `match-${Date.now()}`;
-
-    // Save match to backend
-    fetch("http://localhost:3001/matches/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            player1Id: player1Id,  // should be actual UUIDs
-            player2Id: player2Id,
-            matchId: matchId
-        }),
-    })
-    .then(res => res.json())
-    .then(data => console.log("Match saved:", data))
-    .catch(err => console.error("Error saving match:", err));
-
-    // Start the game
-    AI_ON = false;
-    Game.mainMenu.active = false;
-    GAME_STOPPED = false;
-    
-    setTimeout(() => {
-        Game.startNewGame();
-        if (Game.mainMenu.sound) sounds.fadeOut(Game.mainMenu.sound);
-    }, 200);
-
-    myTurn = (firstTurn === mySocketId);
-    currentRoomCode = roomCode;
-    updateTurnUI();
-});
-
-                socket.on('opponentShot', ({ shotData, nextTurn }) => {
-                    if (!isMultiplayer) return;
-                    
-                    myTurn = (nextTurn === mySocketId);
-                    updateTurnUI();
-                    
-                    // Apply opponent's shot to your game world
-                    Game.gameWorld.applyShot(shotData);
-                });
-
                 // Start the game system (but don't start playing)
                 Game.start('gameArea', 'screen', 1500, 825);
                 
@@ -171,6 +115,8 @@
                 }, 1500);
             });
 
+        // Multiplayer functions disabled for Vercel deployment
+        /*
         function startMultiplayer() {
             if (!socket || !socket.connected) {
                 alert("Not connected to server!");
@@ -199,6 +145,8 @@
             
             myTurn = false;
             updateTurnUI();
+        }
+        */
             
             // Apply your own shot locally
             Game.gameWorld.applyShot(shotData);
