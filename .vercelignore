@@ -16,3 +16,7 @@ diagnostic.js
 node_modules/
 *.log
 .DS_Store
+
+# Problematic assets that cause build errors (non-ASCII characters and spaces)
+assets/Balls/style 1/
+assets/Balls/style2/
