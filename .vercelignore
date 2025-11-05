@@ -1,7 +1,18 @@
-# Only exclude problematic files that cause build errors
-assets/Balls/style 1/
-assets/Balls/style2/
+# Exclude all problematic assets and files that cause build errors
+assets/Balls/
+assets/sounds/
 *.md
+*.tsxt
+*.bat
 .git/
 node_modules/
 *.log
+.DS_Store
+
+# Test and diagnostic files
+*test*.html
+diagnostic.js
+
+# Development files
+launch-game.bat
+steps.tsxt
