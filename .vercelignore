@@ -1,10 +1,4 @@
-# Ignore development files
-node_modules/
-.git/
-*.log
-.DS_Store
-
-# Ignore specific markdown and test files
+# Development and testing files
 *.md
 steps.tsxt
 launch-game.bat
@@ -17,12 +11,8 @@ sprite-test.html
 simple-pool.html
 diagnostic.js
 
-# But ensure these are NOT ignored (explicitly include)
-!css/
-!css/*
-!script/
-!script/**/*
-!assets/
-!assets/**/*
-!index.html
-!vercel.json
+# Version control and dependencies
+.git/
+node_modules/
+*.log
+.DS_Store
