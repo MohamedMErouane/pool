@@ -1,22 +1,7 @@
-# Development and testing files
+# Only exclude problematic files that cause build errors
+assets/Balls/style 1/
+assets/Balls/style2/
 *.md
-steps.tsxt
-launch-game.bat
-debug-test.html
-error-fix-test.html
-function-test.html
-critical-fixes-test.html
-test-fixed.html
-sprite-test.html
-simple-pool.html
-diagnostic.js
-
-# Version control and dependencies
 .git/
 node_modules/
 *.log
-.DS_Store
-
-# Problematic assets that cause build errors (non-ASCII characters and spaces)
-assets/Balls/style 1/
-assets/Balls/style2/
