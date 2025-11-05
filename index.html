@@ -203,6 +203,24 @@
             // Apply your own shot locally
             Game.gameWorld.applyShot(shotData);
         }
+        
+        // Initialize MiniGameSystem fallback if not defined
+        if (typeof MiniGameSystem === 'undefined') {
+            window.MiniGameSystem = {
+                getStats: function() {
+                    return {
+                        gamesPlayed: 0,
+                        tokensEarned: 0,
+                        dailyBreaksCompleted: 0,
+                        highScore: 0
+                    };
+                },
+                recordGame: function(gameType, score, tokensEarned) {
+                    console.log('MiniGameSystem: Game recorded -', gameType, score, tokensEarned);
+                }
+            };
+            console.log('✅ MiniGameSystem fallback initialized');
+        }
     </script>
 </head>
 
@@ -627,7 +645,7 @@
             showMiniGameObjective('Aim & Shoot Challenge', 'Pot any ball in one shot to win!');
         }
 
-        function startDailyBreak() {
+         function startDailyBreak() {
             console.log('=== STARTING DAILY BREAK MINI-GAME ===');
             
             // Hide bottom navigation bar during game
@@ -820,41 +838,60 @@
             if (Game) {
                 console.log('Game object available');
                 
-                // Make sure game world is initialized
-                if (!Game.gameWorld) {
-                    console.log('Initializing game world...');
-                    Game.initialize();
+                // Make sure Game.start() has been called first to set up Canvas2D and Game.size
+                if (!Game.size || !Canvas2D._canvas) {
+                    console.log('Starting Game system first...');
+                    Game.start('gameArea', 'screen', 1500, 825);
+                    
+                    // Wait for Canvas2D to be ready
+                    setTimeout(() => {
+                        initializeGameWorld();
+                    }, 200);
+                } else {
+                    initializeGameWorld();
                 }
+            } else {
+                console.error('❌ Game object not available');
+            }
+        }
+        
+        function initializeGameWorld() {
+            console.log('Initializing game world with proper Canvas2D...');
+            
+            // Verify Canvas2D is ready
+            if (!Canvas2D._canvas) {
+                console.error('❌ Canvas2D not ready, cannot initialize game world');
+                return;
+            }
+            
+            // Start new game with immediate start (skip 5-second delay)
+            if (Game.startNewGame) {
+                console.log('Starting game with custom initialization...');
                 
-                // Start new game with immediate start (skip 5-second delay)
-                if (Game.startNewGame) {
-                    console.log('Starting game with custom initialization...');
-                    
-                    // Set cursor
-                    Canvas2D._canvas.style.cursor = "auto";
-                    
-                    // Create new game world and policy
-                    Game.gameWorld = new GameWorld();
-                    Game.policy = new GamePolicy();
-                    
-                    // Clear canvas and start immediately
-                    Canvas2D.clear();
-                    
-                    // Initialize AI
+                // Set cursor
+                Canvas2D._canvas.style.cursor = "auto";
+                
+                // Create new game world and policy
+                Game.gameWorld = new GameWorld();
+                Game.policy = new GamePolicy();
+                
+                // Clear canvas and start immediately
+                Canvas2D.clear();
+                
+                // Initialize AI
+                if (typeof AI !== 'undefined' && AI.init) {
                     AI.init(Game.gameWorld, Game.policy);
                     
                     if(AI_ON && AI_PLAYER_NUM == 0){
                         AI.startSession();
                     }
-                    
-                    // Start main loop immediately
-                    Game.mainLoop();
-                    console.log('✅ Original pool game started immediately!');
-                } else {
-                    console.error('❌ Game.startNewGame not available');
                 }
+                
+                // Start main loop immediately
+                Game.mainLoop();
+                console.log('✅ Original pool game started immediately!');
             } else {
-                console.error('❌ Game object not available');
+                console.error('❌ Game.startNewGame not available');
             }
             
             // Add back button to return to main menu

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sprite Loading Test</title>
+    <style>
+        body { background: #1a1a1a; color: white; font-family: Arial; margin: 20px; }
+        .sprite-test { margin: 10px 0; padding: 10px; background: #333; border-radius: 5px; }
+        .loaded { background: #2d5a2d; }
+        .error { background: #5a2d2d; }
+        img { max-width: 100px; max-height: 100px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Sprite Loading Test</h1>
+    
+    <div id="test-results"></div>
+    
+    <script>
+        const sprites = [
+            'assets/sprites/spr_background4.png',
+            'assets/sprites/spr_stick.png',
+            'assets/Balls/style2/0.png',
+            'assets/Balls/style2/1.png',
+            'assets/Balls/style2/8.png'
+        ];
+        
+        const resultsDiv = document.getElementById('test-results');
+        
+        sprites.forEach(spritePath => {
+            const div = document.createElement('div');
+            div.className = 'sprite-test';
+            div.innerHTML = `<strong>Testing:</strong> ${spritePath}`;
+            
+            const img = new Image();
+            img.onload = function() {
+                div.className = 'sprite-test loaded';
+                div.innerHTML += ` ✅ LOADED (${img.width}x${img.height})`;
+                div.appendChild(img);
+            };
+            img.onerror = function() {
+                div.className = 'sprite-test error';
+                div.innerHTML += ` ❌ FAILED TO LOAD`;
+            };
+            img.src = spritePath;
+            
+            resultsDiv.appendChild(div);
+        });
+    </script>
+</body>
+</html>

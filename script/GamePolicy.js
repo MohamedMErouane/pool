@@ -3,11 +3,15 @@ function GamePolicy(){
 
     this.turn = 0;
     this.firstCollision = true;
-    let player1TotalScore = new Score(new Vector2(Game.size.x/2 - 75,Game.size.y/2 - 45));
-    let player2TotalScore = new Score(new Vector2(Game.size.x/2 + 75,Game.size.y/2 - 45));
+    
+    // Ensure Game.size is available, use defaults if not
+    const gameSize = Game.size || new Vector2(1500, 825);
+    
+    let player1TotalScore = new Score(new Vector2(gameSize.x/2 - 75, gameSize.y/2 - 45));
+    let player2TotalScore = new Score(new Vector2(gameSize.x/2 + 75, gameSize.y/2 - 45));
 
-    let player1MatchScore = new Score(new Vector2(Game.size.x/2 - 280,108));
-    let player2MatchScore = new Score(new Vector2(Game.size.x/2 + 230,108));
+    let player1MatchScore = new Score(new Vector2(gameSize.x/2 - 280, 108));
+    let player2MatchScore = new Score(new Vector2(gameSize.x/2 + 230, 108));
 
     this.players = [new Player(player1MatchScore,player1TotalScore), new Player(player2MatchScore,player2TotalScore)];
     this.foul = false;

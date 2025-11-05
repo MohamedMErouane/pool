@@ -1,6 +1,11 @@
 "use strict";
 
 function handleMouseMove(evt) {
+    // Safety check: ensure Canvas2D is properly initialized
+    if (!Canvas2D._canvas) {
+        return; // Skip if canvas not ready
+    }
+    
     var canvasScale = Canvas2D.scale;
     var canvasOffset = Canvas2D.offset;
     var mx = (evt.pageX - canvasOffset.x) / canvasScale.x;
@@ -42,10 +47,22 @@ function Mouse_Singleton() {
     this._left = new ButtonState();
     this._middle = new ButtonState();
     this._right = new ButtonState();
-    document.onmousemove = handleMouseMove;
-    document.onmousedown = handleMouseDown;
-    document.onmouseup = handleMouseUp;
+    
+    // Defer mouse event setup until Canvas2D is ready
+    this.setupEvents();
 }
+
+Mouse_Singleton.prototype.setupEvents = function() {
+    // Only set up events if Canvas2D is available
+    if (typeof Canvas2D !== 'undefined') {
+        document.onmousemove = handleMouseMove;
+        document.onmousedown = handleMouseDown;
+        document.onmouseup = handleMouseUp;
+    } else {
+        // Retry in 100ms if Canvas2D not ready
+        setTimeout(() => this.setupEvents(), 100);
+    }
+};
 
 Object.defineProperty(Mouse_Singleton.prototype, "left",
     {

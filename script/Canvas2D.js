@@ -16,6 +16,9 @@ Object.defineProperty(Canvas2D_Singleton.prototype, "offset",
 Object.defineProperty(Canvas2D_Singleton.prototype, "scale",
     {
         get: function () {
+            if (!this._canvas || !Game.size) {
+                return new Vector2(1, 1); // Default scale if canvas or game size not ready
+            }
             return new Vector2(this._canvas.width / Game.size.x,
                 this._canvas.height / Game.size.y);
         }

@@ -30,10 +30,42 @@ RewardsDashboard.prototype.createDashboard = function() {
 };
 
 RewardsDashboard.prototype.getDashboardHTML = function() {
-    const dailyStats = DailyReward.getStats();
-    const heatStats = GlobalHeatMeter.getStats();
-    const walletStats = SolanaWalletManager.getWalletStats();
-    const miniGameStats = MiniGameSystem.getStats();
+    const dailyStats = DailyReward.getStats() || {};
+    const heatStats = GlobalHeatMeter.getStats() || {};
+    const walletStats = SolanaWalletManager.getWalletStats() || {};
+    
+    // Handle MiniGameSystem if it exists, otherwise use default stats
+    const miniGameStats = (typeof MiniGameSystem !== 'undefined' && MiniGameSystem.getStats) 
+        ? MiniGameSystem.getStats() 
+        : {
+            gamesPlayed: 0,
+            tokensEarned: 0,
+            dailyBreaksCompleted: 0,
+            highScore: 0
+        };
+    
+    // Ensure all required properties exist with defaults
+    const safeDailyStats = {
+        streak: dailyStats.streak || 0,
+        totalMinedTokens: dailyStats.totalMinedTokens || 0,
+        canCheckIn: dailyStats.canCheckIn !== undefined ? dailyStats.canCheckIn : true,
+        nextReward: dailyStats.nextReward || 100,
+        ...dailyStats
+    };
+    
+    const safeHeatStats = {
+        currentLevel: heatStats.currentLevel || 1,
+        multiplier: heatStats.multiplier || 1.0,
+        progress: heatStats.progress || 0,
+        ...heatStats
+    };
+    
+    const safeWalletStats = {
+        isConnected: walletStats.isConnected || false,
+        address: walletStats.address || null,
+        balance: walletStats.balance || 0,
+        ...walletStats
+    };
     
     return `
         <div class="dashboard-header">
@@ -47,18 +79,18 @@ RewardsDashboard.prototype.getDashboardHTML = function() {
                 <h3>📅 Daily Check-in</h3>
                 <div class="checkin-status">
                     <div class="streak-info">
-                        <span class="streak-number">${dailyStats.consecutiveDays}</span>
+                        <span class="streak-number">${safeDailyStats.consecutiveDays || 0}</span>
                         <span class="streak-label">Day Streak</span>
                     </div>
                     <div class="checkin-action">
-                        ${dailyStats.canCheckIn ? 
+                        ${safeDailyStats.canCheckIn ? 
                             '<button class="checkin-btn" onclick="rewardsDashboard.performCheckIn()">Check In</button>' :
                             '<span class="already-checked">✅ Checked In Today</span>'
                         }
                     </div>
                 </div>
                 <div class="total-mined">
-                    <span class="mined-amount">${dailyStats.totalMinedTokens.toFixed(2)}</span>
+                    <span class="mined-amount">${safeDailyStats.totalMinedTokens.toFixed(2)}</span>
                     <span class="mined-label">Total Mined Tokens</span>
                 </div>
             </div>
@@ -68,13 +100,13 @@ RewardsDashboard.prototype.getDashboardHTML = function() {
                 <h3>🔥 Global Heat Meter</h3>
                 <div class="heat-display">
                     <div class="heat-bar">
-                        <div class="heat-fill" style="width: ${heatStats.progress}%; background-color: ${heatStats.color}"></div>
-                        <span class="heat-text">${heatStats.currentHeat.toFixed(1)} / ${heatStats.maxHeat}</span>
+                        <div class="heat-fill" style="width: ${safeHeatStats.progress || 0}%; background-color: ${safeHeatStats.color || '#ff4444'}"></div>
+                        <span class="heat-text">${(safeHeatStats.currentHeat || 0).toFixed(1)} / ${safeHeatStats.maxHeat || 100}</span>
                     </div>
-                    <div class="heat-level">${heatStats.level} Level</div>
+                    <div class="heat-level">${safeHeatStats.level || 1} Level</div>
                 </div>
-                ${heatStats.nextThreshold ? 
-                    `<div class="next-reward">Next reward at ${heatStats.nextThreshold} heat</div>` : 
+                ${safeHeatStats.nextThreshold ? 
+                    `<div class="next-reward">Next reward at ${safeHeatStats.nextThreshold} heat</div>` : 
                     '<div class="max-heat">🏆 Maximum heat achieved!</div>'
                 }
             </div>

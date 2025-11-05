@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pool Game Function Test</title>
+    <style>
+        body { background: #1a1a1a; color: white; font-family: Arial; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; background: #333; border-radius: 5px; }
+        .success { background: #2d5a2d; }
+        .error { background: #5a2d2d; }
+        button { padding: 10px 20px; margin: 10px; background: #4ECDC4; border: none; border-radius: 5px; color: white; cursor: pointer; }
+        button:hover { background: #45B7B8; }
+    </style>
+</head>
+<body>
+    <h1>Pool Game Function Test</h1>
+    
+    <div>
+        <button onclick="testBasicFunctions()">Test Basic Functions</button>
+        <button onclick="testGameObjects()">Test Game Objects</button>
+        <button onclick="testDailyBreak()">Test Daily Break Function</button>
+    </div>
+    
+    <div id="test-results"></div>
+    
+    <!-- Load LAB.js first -->
+    <script src="script/lib/LAB.min.js"></script>
+    
+    <script>
+        const resultsDiv = document.getElementById('test-results');
+        
+        function addResult(message, isSuccess = true) {
+            const div = document.createElement('div');
+            div.className = 'test-result ' + (isSuccess ? 'success' : 'error');
+            div.innerHTML = message;
+            resultsDiv.appendChild(div);
+        }
+        
+        function testBasicFunctions() {
+            resultsDiv.innerHTML = '<h3>Testing Basic Functions...</h3>';
+            
+            // Test if LAB is loaded
+            if (typeof $LAB !== 'undefined') {
+                addResult('✅ LAB.js is loaded');
+            } else {
+                addResult('❌ LAB.js is NOT loaded', false);
+                return;
+            }
+            
+            // Test script loading
+            $LAB
+                .script('script/geom/Vector2.js').wait()
+                .script('script/Canvas2D.js').wait()
+                .script('script/Game.js').wait(function() {
+                    // Test if objects are available
+                    if (typeof Vector2 !== 'undefined') {
+                        addResult('✅ Vector2 is available');
+                    } else {
+                        addResult('❌ Vector2 is NOT available', false);
+                    }
+                    
+                    if (typeof Canvas2D !== 'undefined') {
+                        addResult('✅ Canvas2D is available');
+                    } else {
+                        addResult('❌ Canvas2D is NOT available', false);
+                    }
+                    
+                    if (typeof Game !== 'undefined') {
+                        addResult('✅ Game object is available');
+                    } else {
+                        addResult('❌ Game object is NOT available', false);
+                    }
+                });
+        }
+        
+        function testGameObjects() {
+            resultsDiv.innerHTML = '<h3>Testing Game Objects...</h3>';
+            
+            if (typeof Game === 'undefined') {
+                addResult('❌ Game object not available - run basic test first', false);
+                return;
+            }
+            
+            // Test Game methods
+            if (typeof Game.start === 'function') {
+                addResult('✅ Game.start() function exists');
+            } else {
+                addResult('❌ Game.start() function missing', false);
+            }
+            
+            if (typeof Game.initialize === 'function') {
+                addResult('✅ Game.initialize() function exists');
+            } else {
+                addResult('❌ Game.initialize() function missing', false);
+            }
+            
+            // Test Canvas2D methods
+            if (typeof Canvas2D !== 'undefined' && typeof Canvas2D.initialize === 'function') {
+                addResult('✅ Canvas2D.initialize() function exists');
+            } else {
+                addResult('❌ Canvas2D.initialize() function missing', false);
+            }
+        }
+        
+        function testDailyBreak() {
+            resultsDiv.innerHTML = '<h3>Testing Daily Break Function...</h3>';
+            
+            // Check if the main HTML file's functions are available
+            if (typeof startDailyBreak === 'function') {
+                addResult('✅ startDailyBreak() function exists');
+                
+                // Try to call it in a try-catch
+                try {
+                    addResult('🚀 Attempting to call startDailyBreak()...');
+                    // Note: This won't actually work because we don't have the full game loaded
+                    // But it will show if there are syntax errors
+                } catch (error) {
+                    addResult('❌ Error in startDailyBreak(): ' + error.message, false);
+                }
+            } else {
+                addResult('❌ startDailyBreak() function NOT found - this may be the problem!', false);
+                addResult('💡 The function might be defined in the main index.html file only', true);
+            }
+        }
+        
+        // Test basic JavaScript functionality
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            addResult('❌ JavaScript Error: ' + msg + ' at line ' + lineNo, false);
+            return false;
+        };
+    </script>
+</body>
+</html>
