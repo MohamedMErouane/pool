@@ -364,6 +364,10 @@ GameWorld.prototype.trackBreakShot = function(ballsSpread, ballsPotted) {
 GameWorld.prototype.handleBreakComplete = function() {
     console.log("🎯 Break complete! Balls pocketed in break:", this.ballsPocketedInBreak);
     
+    // Apply guaranteed ball pocketing system for better gameplay
+    const guaranteedBalls = this.applyGuaranteedBallPocketing();
+    console.log("🎲 Guaranteed balls applied:", guaranteedBalls);
+    
     this.miniGameActive = false;
     
     if (!Game.miniGames) {
@@ -393,6 +397,92 @@ GameWorld.prototype.handleBreakComplete = function() {
         Game.mainMenu.active = true;
         GAME_STOPPED = true;
     }, 3000);
+};
+
+// Guaranteed Ball Pocketing System
+GameWorld.prototype.applyGuaranteedBallPocketing = function() {
+    if (!this.isBreakMode || !this.miniGameActive) return 0;
+    
+    // Calculate how many balls should be guaranteed based on attempt number
+    const attempt = Game.miniGames ? Game.miniGames.dailyBreakAttempts : 1;
+    let guaranteedBalls = this.calculateGuaranteedBalls(attempt);
+    
+    // If we already have enough balls pocketed naturally, don't add more
+    if (this.ballsPocketedInBreak >= guaranteedBalls) {
+        return 0;
+    }
+    
+    const ballsToAdd = guaranteedBalls - this.ballsPocketedInBreak;
+    console.log("🎯 Adding", ballsToAdd, "guaranteed balls to break result");
+    
+    // Find balls that are not in holes and make some of them "pocketed"
+    const availableBalls = [];
+    for (let i = 1; i < this.balls.length; i++) { // Skip cue ball (index 0)
+        const ball = this.balls[i];
+        if (ball.visible && !ball.inHole) {
+            availableBalls.push(ball);
+        }
+    }
+    
+    // Randomly select balls to be "pocketed"
+    const ballsToPocket = Math.min(ballsToAdd, availableBalls.length);
+    for (let i = 0; i < ballsToPocket; i++) {
+        const randomIndex = Math.floor(Math.random() * availableBalls.length);
+        const ballToPocket = availableBalls.splice(randomIndex, 1)[0];
+        
+        // Make the ball appear to have been pocketed
+        this.forceBallIntoPocket(ballToPocket);
+    }
+    
+    return ballsToPocket;
+};
+
+GameWorld.prototype.calculateGuaranteedBalls = function(attemptNumber) {
+    // Progressive system: more balls guaranteed on later attempts
+    const guaranteedByAttempt = {
+        1: Math.floor(Math.random() * 3) + 1, // 1-3 balls on first attempt
+        2: Math.floor(Math.random() * 4) + 2, // 2-5 balls on second attempt  
+        3: Math.floor(Math.random() * 5) + 3  // 3-7 balls on final attempt
+    };
+    
+    return guaranteedByAttempt[attemptNumber] || 2; // Default to 2 balls
+};
+
+GameWorld.prototype.forceBallIntoPocket = function(ball) {
+    // Get a random pocket position
+    const pockets = [
+        { x: 62, y: 62 },     // Top-left
+        { x: 400, y: 50 },    // Top-center
+        { x: 738, y: 62 },    // Top-right
+        { x: 62, y: 438 },    // Bottom-left
+        { x: 400, y: 450 },   // Bottom-center
+        { x: 738, y: 438 }    // Bottom-right
+    ];
+    
+    const randomPocket = pockets[Math.floor(Math.random() * pockets.length)];
+    
+    // Move ball to pocket and mark as pocketed
+    ball.position.x = randomPocket.x;
+    ball.position.y = randomPocket.y;
+    ball.inHole = true;
+    ball.visible = false;
+    ball.velocity = Vector2.zero;
+    
+    // Increment the counter and trigger the tracking
+    this.ballsPocketedInBreak++;
+    
+    // Play sound effect if available
+    if (Game.sound && SOUND_ON && typeof sounds !== 'undefined' && sounds.hole) {
+        try {
+            const holeSound = sounds.hole.cloneNode(true);
+            holeSound.volume = 0.3;
+            holeSound.play();
+        } catch (error) {
+            console.log("Sound effect error:", error);
+        }
+    }
+    
+    console.log("⚡ Forced ball into pocket! Total now:", this.ballsPocketedInBreak);
 };
 
 GameWorld.prototype.analyzeBallsAfterBreak = function() {
@@ -523,6 +613,11 @@ GameWorld.prototype.showBreakResult = function(result) {
                       "Balls near pockets: " + result.ballAnalysis.ballsNearPockets + "\n" +
                       "Spread quality: " + result.ballAnalysis.spreadQuality + "%";
         }
+        
+        // Add note about guaranteed balls if system was used
+        if (result.ballsPocketed >= 1) {
+            message += "\n\n🎲 Note: Ball assistance system ensures fair rewards!";
+        }
     } else {
         message = "❌ BREAK RESULT\n\n" +
                  "Balls Entered: " + result.ballsPocketed + "\n";
@@ -557,6 +652,11 @@ GameWorld.prototype.showBreakResult = function(result) {
         }
         
         message += "\n\n" + result.message;
+        
+        // Encourage player for next attempt
+        if (result.attempt < result.maxAttempts) {
+            message += "\n\n🎯 Next attempt will have better ball assistance!";
+        }
     }
     
     // Show enhanced result
