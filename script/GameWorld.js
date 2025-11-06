@@ -354,7 +354,12 @@ GameWorld.prototype.handleBreakComplete = function() {
         Game.miniGames = new MiniGames();
     }
     
+    // Enhanced break analysis
+    const ballsRemaining = this.analyzeBallsAfterBreak();
     const result = Game.miniGames.completeBreakShot(this.ballsPocketedInBreak);
+    
+    // Add detailed ball analysis to result
+    result.ballAnalysis = ballsRemaining;
     
     // Show result overlay
     this.showBreakResult(result);
@@ -372,13 +377,172 @@ GameWorld.prototype.handleBreakComplete = function() {
     }, 3000);
 };
 
-GameWorld.prototype.showBreakResult = function(result) {
-    // Simple alert for now - can be enhanced with proper UI later
-    if (result.success) {
-        alert("Daily Break Complete!\nBalls Pocketed: " + result.ballsPocketed + "\nPoints: " + result.points);
-    } else {
-        alert("Daily Break Result:\nBalls Pocketed: " + result.ballsPocketed + "\n" + result.message);
+GameWorld.prototype.analyzeBallsAfterBreak = function() {
+    const analysis = {
+        totalBalls: this.balls.length - 1, // Exclude cue ball
+        ballsPocketed: this.ballsPocketedInBreak,
+        ballsRemaining: 0,
+        ballsNearPockets: 0,
+        ballsInClusters: 0,
+        spreadQuality: 0
+    };
+    
+    let ballPositions = [];
+    
+    // Analyze each ball
+    for (let i = 1; i < this.balls.length; i++) { // Skip cue ball (index 0)
+        const ball = this.balls[i];
+        if (ball.visible && !ball.inHole) {
+            analysis.ballsRemaining++;
+            ballPositions.push(ball.position);
+            
+            // Check if near pocket
+            if (this.isBallNearPocket(ball.position)) {
+                analysis.ballsNearPockets++;
+            }
+        }
     }
+    
+    // Calculate spread quality (how well balls are distributed)
+    analysis.spreadQuality = this.calculateSpreadQuality(ballPositions);
+    
+    // Detect clusters (balls close together)
+    analysis.ballsInClusters = this.detectBallClusters(ballPositions);
+    
+    return analysis;
+};
+
+GameWorld.prototype.isBallNearPocket = function(position) {
+    // Pocket positions on standard 8-ball table
+    const pockets = [
+        { x: 62, y: 62 },     // Top-left
+        { x: 400, y: 50 },    // Top-center  
+        { x: 738, y: 62 },    // Top-right
+        { x: 62, y: 438 },    // Bottom-left
+        { x: 400, y: 450 },   // Bottom-center
+        { x: 738, y: 438 }    // Bottom-right
+    ];
+    
+    const nearDistance = 60; // Distance to be considered "near" a pocket
+    
+    for (let pocket of pockets) {
+        const distance = Math.sqrt(
+            Math.pow(position.x - pocket.x, 2) + 
+            Math.pow(position.y - pocket.y, 2)
+        );
+        if (distance < nearDistance) {
+            return true;
+        }
+    }
+    return false;
+};
+
+GameWorld.prototype.calculateSpreadQuality = function(ballPositions) {
+    if (ballPositions.length < 2) return 0;
+    
+    let totalDistance = 0;
+    let comparisons = 0;
+    
+    // Calculate average distance between all balls
+    for (let i = 0; i < ballPositions.length; i++) {
+        for (let j = i + 1; j < ballPositions.length; j++) {
+            const distance = Math.sqrt(
+                Math.pow(ballPositions[i].x - ballPositions[j].x, 2) +
+                Math.pow(ballPositions[i].y - ballPositions[j].y, 2)
+            );
+            totalDistance += distance;
+            comparisons++;
+        }
+    }
+    
+    const averageDistance = totalDistance / comparisons;
+    // Normalize to a 0-100 scale (higher = better spread)
+    return Math.min(100, Math.floor(averageDistance / 5));
+};
+
+GameWorld.prototype.detectBallClusters = function(ballPositions) {
+    let clusteredBalls = 0;
+    const clusterDistance = 80; // Balls within this distance are considered clustered
+    
+    for (let i = 0; i < ballPositions.length; i++) {
+        let nearbyBalls = 0;
+        for (let j = 0; j < ballPositions.length; j++) {
+            if (i !== j) {
+                const distance = Math.sqrt(
+                    Math.pow(ballPositions[i].x - ballPositions[j].x, 2) +
+                    Math.pow(ballPositions[i].y - ballPositions[j].y, 2)
+                );
+                if (distance < clusterDistance) {
+                    nearbyBalls++;
+                }
+            }
+        }
+        
+        // If a ball has 2+ nearby balls, it's in a cluster
+        if (nearbyBalls >= 2) {
+            clusteredBalls++;
+        }
+    }
+    
+    return clusteredBalls;
+};
+
+GameWorld.prototype.showBreakResult = function(result) {
+    // Enhanced result display with odds information
+    let message = "";
+    
+    if (result.success) {
+        message = "🎯 " + result.odds.description + "\n\n" +
+                 "📊 BREAK STATISTICS:\n" +
+                 "Balls Entered: " + result.ballsPocketed + "\n" +
+                 "Points Earned: " + result.points + "\n" +
+                 "Probability: " + (result.odds.probability * 100).toFixed(1) + "%\n" +
+                 "Multiplier: x" + result.odds.multiplier;
+        
+        if (result.ballAnalysis) {
+            message += "\n\n🎱 TABLE ANALYSIS:\n" +
+                      "Balls remaining: " + result.ballAnalysis.ballsRemaining + "\n" +
+                      "Balls near pockets: " + result.ballAnalysis.ballsNearPockets + "\n" +
+                      "Spread quality: " + result.ballAnalysis.spreadQuality + "%";
+        }
+    } else {
+        message = "❌ BREAK RESULT\n\n" +
+                 "Balls Entered: " + result.ballsPocketed + "\n";
+        
+        if (result.ballAnalysis) {
+            message += "\n� WHY BALLS DIDN'T ENTER:\n";
+            
+            if (result.ballAnalysis.ballsInClusters > 0) {
+                message += "• " + result.ballAnalysis.ballsInClusters + " balls stuck in clusters\n";
+            }
+            
+            if (result.ballAnalysis.ballsNearPockets === 0) {
+                message += "• No balls reached pocket areas\n";
+                message += "• Break power may be too low\n";
+            } else {
+                message += "• " + result.ballAnalysis.ballsNearPockets + " balls near pockets but didn't drop\n";
+                message += "• Consider different break angle\n";
+            }
+            
+            if (result.ballAnalysis.spreadQuality < 30) {
+                message += "• Poor ball spread (Quality: " + result.ballAnalysis.spreadQuality + "%)\n";
+                message += "• Try hitting the lead ball more directly\n";
+            }
+        }
+        
+        if (result.ballsNotEnteredFeedback) {
+            message += "\n💭 " + result.ballsNotEnteredFeedback;
+        }
+        
+        if (result.nextAttemptHint) {
+            message += "\n\n" + result.nextAttemptHint;
+        }
+        
+        message += "\n\n" + result.message;
+    }
+    
+    // Show enhanced result
+    alert(message);
 };
 
 GameWorld.prototype.handleAimShootComplete = function() {
