@@ -247,11 +247,22 @@ GameWorld.prototype.draw = function () {
 GameWorld.prototype.reset = function () {
     this.gameOver = false;
 
+    // Preserve break mode stats during reset if in break mode
+    const preserveBreakStats = this.isBreakMode && this.miniGameActive;
+    const ballsPocketedBackup = preserveBreakStats ? this.ballsPocketedInBreak : 0;
+
     for (var i = 0; i < this.balls.length; i++) {
         this.balls[i].reset();
     }
 
     this.stick.reset();
+
+    // Restore break stats if needed
+    if (preserveBreakStats) {
+        this.ballsPocketedInBreak = ballsPocketedBackup;
+    } else {
+        this.ballsPocketedInBreak = 0;
+    }
 
     if(AI_ON && AI_PLAYER_NUM === 0){
         AI.startSession();
@@ -290,9 +301,12 @@ GameWorld.prototype.trackShotTaken = function(shotPower, accuracy) {
 };
 
 GameWorld.prototype.trackBallPotted = function(ball) {
+    console.log("🎱 Ball potted detected! Break mode:", this.isBreakMode, "Mini game active:", this.miniGameActive);
+    
     // Check if in break mode
     if (this.isBreakMode && this.miniGameActive) {
         this.ballsPocketedInBreak++;
+        console.log("⚡ Break mode ball count increased to:", this.ballsPocketedInBreak);
         return this.ballsPocketedInBreak;
     }
     
@@ -348,6 +362,8 @@ GameWorld.prototype.trackBreakShot = function(ballsSpread, ballsPotted) {
 };
 
 GameWorld.prototype.handleBreakComplete = function() {
+    console.log("🎯 Break complete! Balls pocketed in break:", this.ballsPocketedInBreak);
+    
     this.miniGameActive = false;
     
     if (!Game.miniGames) {
@@ -357,6 +373,8 @@ GameWorld.prototype.handleBreakComplete = function() {
     // Enhanced break analysis
     const ballsRemaining = this.analyzeBallsAfterBreak();
     const result = Game.miniGames.completeBreakShot(this.ballsPocketedInBreak);
+    
+    console.log("🎮 Mini game result:", result);
     
     // Add detailed ball analysis to result
     result.ballAnalysis = ballsRemaining;
