@@ -386,9 +386,18 @@ GameWorld.prototype.handleBreakComplete = function() {
     // Show result overlay
     this.showBreakResult(result);
     
+    // Explicitly reset cue stick to starting position
+    console.log("🎯 Resetting cue stick after break");
+    this.stick.reset();
+    this.stick.position = this.whiteBall.position.copy();
+    this.stick.visible = true;
+    this.stick.power = 0;
+    this.stick.rotation = 0;
+    
     // AUTO-RESET: Reset the game after completion
     setTimeout(() => {
         this.reset(); // Reset balls and cue stick to starting positions
+        this.ballsPocketedInBreak = 0; // Reset counter for next attempt
     }, 1500);
     
     // Return to main menu after delay

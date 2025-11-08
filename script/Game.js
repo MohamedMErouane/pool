@@ -108,6 +108,10 @@ Game_Singleton.prototype.startNewGame = function(){
 Game_Singleton.prototype.startBreakGame = function(){
     Canvas2D._canvas.style.cursor = "auto";
 
+    // Ensure sound is enabled for break mode
+    Game.sound = true;
+    console.log("🔊 Sound enabled for Daily Break mode");
+
     Game.gameWorld = new GameWorld();
     Game.policy = new GamePolicy();
     Game.gameWorld.isBreakMode = true; // Mark as break mode
