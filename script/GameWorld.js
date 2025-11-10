@@ -684,8 +684,17 @@ GameWorld.prototype.handleAimShootComplete = function() {
     this.miniGameActive = false;
     this.aimShootCompleted = true;
     
-    // Calculate reward based on accuracy and balls potted
+    // Apply guaranteed ball pocketing system (same as Daily Break)
+    const ballsPottedBeforeAssist = this.countPottedBalls();
+    console.log("Balls potted before assistance:", ballsPottedBeforeAssist);
+    
+    // Apply guaranteed ball system for Aim & Shoot
+    this.applyGuaranteedBallPocketing();
+    
+    // Calculate final ball count after assistance
     const ballsPotted = this.countPottedBalls();
+    console.log("Final balls potted after assistance:", ballsPotted);
+    
     const baseReward = 5; // Base reward for taking a shot
     const pottingBonus = ballsPotted * 3; // 3 tokens per ball potted
     const totalReward = baseReward + pottingBonus;
@@ -701,20 +710,17 @@ GameWorld.prototype.handleAimShootComplete = function() {
         SolanaWalletManager.addPendingReward(totalReward, "Aim & Shoot");
     }
     
-    // Show result
+    // Show result with guaranteed balls
     this.showAimShootResult(ballsPotted, totalReward);
     
-    // AUTO-RESET: Reset the game after completion
-    setTimeout(() => {
-        this.reset(); // Reset balls and cue stick to starting positions
-    }, 1500);
+    // IMMEDIATE RESET: No delays - reset immediately as client requested
+    console.log("Aim & Shoot completed - resetting immediately");
+    this.reset(); // Reset balls and cue stick to starting positions
     
-    // Return to main menu after delay
-    setTimeout(() => {
-        if (typeof showMobileInterface === 'function') {
-            showMobileInterface();
-        }
-    }, 3000);
+    // Return to main menu immediately
+    if (typeof showMobileInterface === 'function') {
+        showMobileInterface();
+    }
 };
 
 GameWorld.prototype.showAimShootResult = function(ballsPotted, reward) {
@@ -728,15 +734,30 @@ GameWorld.prototype.showAimShootResult = function(ballsPotted, reward) {
         message += "\nKeep practicing! 💪";
     }
     
-    alert(message);
+    // Log result instead of blocking alert for immediate screen reset
+    console.log("=== AIM & SHOOT RESULT ===");
+    console.log("Balls Potted:", ballsPotted);
+    console.log("Reward:", reward, "tokens");
+    console.log("Message:", ballsPotted > 0 ? "Great shooting! 🎯" : "Keep practicing! 💪");
+    
+    // No blocking alert - return immediately
 };
 
 GameWorld.prototype.handlePowerShotComplete = function() {
     this.miniGameActive = false;
     this.powerShotActive = false;
     
-    // Calculate reward based on balls potted
+    // Apply guaranteed ball pocketing system (same as Daily Break and Aim & Shoot)
+    const ballsPottedBeforeAssist = this.countPottedBalls();
+    console.log("Power Shot - balls potted before assistance:", ballsPottedBeforeAssist);
+    
+    // Apply guaranteed ball system for Power Shot
+    this.applyGuaranteedBallPocketing();
+    
+    // Calculate final ball count after assistance
     const ballsPotted = this.countPottedBalls();
+    console.log("Power Shot - final balls potted after assistance:", ballsPotted);
+    
     let baseReward = ballsPotted * 5; // 5 tokens per ball potted
     
     // 40% chance to double the reward
@@ -756,20 +777,17 @@ GameWorld.prototype.handlePowerShotComplete = function() {
         SolanaWalletManager.addPendingReward(baseReward, "Power Shot");
     }
     
-    // Show result
+    // Show result with guaranteed balls
     this.showPowerShotResult(ballsPotted, baseReward, doubleChance);
     
-    // AUTO-RESET: Reset the game after completion
-    setTimeout(() => {
-        this.reset(); // Reset balls and cue stick to starting positions
-    }, 1500);
+    // IMMEDIATE RESET: No delays - reset immediately as client requested
+    console.log("Power Shot completed - resetting immediately");
+    this.reset(); // Reset balls and cue stick to starting positions
     
-    // Return to main menu after delay
-    setTimeout(() => {
-        if (typeof showMobileInterface === 'function') {
-            showMobileInterface();
-        }
-    }, 3000);
+    // Return to main menu immediately
+    if (typeof showMobileInterface === 'function') {
+        showMobileInterface();
+    }
 };
 
 GameWorld.prototype.showPowerShotResult = function(ballsPotted, reward, wasDoubled) {
@@ -790,7 +808,14 @@ GameWorld.prototype.showPowerShotResult = function(ballsPotted, reward, wasDoubl
         message += "\nTry again for better results! 💪";
     }
     
-    alert(message);
+    // Log result instead of blocking alert for immediate screen reset
+    console.log("=== POWER SHOT RESULT ===");
+    console.log("Balls Potted:", ballsPotted);
+    console.log("Reward:", reward, "tokens");
+    console.log("Double Bonus:", wasDoubled);
+    console.log("Message:", ballsPotted > 0 ? "Excellent power shot! ⚡" : "Try again for better results! 💪");
+    
+    // No blocking alert - return immediately
 };
 
 GameWorld.prototype.countPottedBalls = function() {
