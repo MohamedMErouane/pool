@@ -714,15 +714,26 @@ GameWorld.prototype.handleAimShootComplete = function() {
     console.log("=== AIM & SHOOT RESULT ===");
     console.log("Balls Potted:", ballsPotted);
     console.log("Reward:", totalReward, "tokens");
-    console.log("Resetting Aim & Shoot mode immediately...");
+    console.log("Resetting to INITIAL table state...");
     
-    // Properly exit Aim & Shoot mode
+    // COMPLETE RESET TO INITIAL STATE
     this.isAimShootMode = false;
     this.miniGameActive = false;
     this.aimShootCompleted = false;
+    this.isBreakMode = false;
+    this.gameOver = false;
+    this.ballsPocketedInBreak = 0;
     
-    // Full table reset to clean state
-    this.reset();
+    // Reset all balls to initial positions and make them visible
+    for (var i = 0; i < this.balls.length; i++) {
+        this.balls[i].reset();
+        this.balls[i].visible = true;
+        this.balls[i].inHole = false;
+    }
+    
+    // Reset cue stick to initial position
+    this.stick.reset();
+    this.stick.position = { x: 413, y: 413 };
     
     // Return to main menu immediately
     if (typeof showMobileInterface === 'function') {
