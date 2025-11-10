@@ -394,18 +394,16 @@ GameWorld.prototype.handleBreakComplete = function() {
     this.stick.power = 0;
     this.stick.rotation = 0;
     
-    // AUTO-RESET: Reset the game after completion
-    setTimeout(() => {
-        this.reset(); // Reset balls and cue stick to starting positions
-        this.ballsPocketedInBreak = 0; // Reset counter for next attempt
-    }, 1500);
+    // IMMEDIATE RESET: Reset the game immediately without delays
+    this.reset(); // Reset balls and cue stick to starting positions
+    this.ballsPocketedInBreak = 0; // Reset counter for next attempt
     
-    // Return to main menu after delay
-    setTimeout(() => {
-        Game.initMenus(false);
-        Game.mainMenu.active = true;
-        GAME_STOPPED = true;
-    }, 3000);
+    // Return to main menu immediately (no delay)
+    Game.initMenus(false);
+    Game.mainMenu.active = true;
+    GAME_STOPPED = true;
+    
+    console.log("🔄 Immediately returned to initial screen");
 };
 
 // Guaranteed Ball Pocketing System
@@ -669,7 +667,17 @@ GameWorld.prototype.showBreakResult = function(result) {
     }
     
     // Show enhanced result
-    alert(message);
+    console.log("🎯 Break Result:", message);
+    
+    // Optional: Show quick non-blocking notification instead of blocking alert
+    if (typeof rewardsDashboard !== 'undefined') {
+        const shortMessage = result.success ? 
+            `${result.odds.description} - ${result.ballsPocketed} balls, ${result.points} points!` :
+            `${result.ballsPocketed} balls entered`;
+        rewardsDashboard.showNotification(shortMessage, result.success ? 'success' : 'info');
+    }
+    
+    // No blocking alert - return immediately
 };
 
 GameWorld.prototype.handleAimShootComplete = function() {
