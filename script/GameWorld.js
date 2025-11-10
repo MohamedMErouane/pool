@@ -714,9 +714,15 @@ GameWorld.prototype.handleAimShootComplete = function() {
     console.log("=== AIM & SHOOT RESULT ===");
     console.log("Balls Potted:", ballsPotted);
     console.log("Reward:", totalReward, "tokens");
-    console.log("Resetting immediately to initial screen...");
+    console.log("Resetting Aim & Shoot mode immediately...");
     
-    this.reset(); // Reset balls and cue stick to starting positions
+    // Properly exit Aim & Shoot mode
+    this.isAimShootMode = false;
+    this.miniGameActive = false;
+    this.aimShootCompleted = false;
+    
+    // Full table reset to clean state
+    this.reset();
     
     // Return to main menu immediately
     if (typeof showMobileInterface === 'function') {
