@@ -710,11 +710,12 @@ GameWorld.prototype.handleAimShootComplete = function() {
         SolanaWalletManager.addPendingReward(totalReward, "Aim & Shoot");
     }
     
-    // Show result with guaranteed balls
-    this.showAimShootResult(ballsPotted, totalReward);
+    // IMMEDIATE RESET: No result screen - just log and reset instantly
+    console.log("=== AIM & SHOOT RESULT ===");
+    console.log("Balls Potted:", ballsPotted);
+    console.log("Reward:", totalReward, "tokens");
+    console.log("Resetting immediately to initial screen...");
     
-    // IMMEDIATE RESET: No delays - reset immediately as client requested
-    console.log("Aim & Shoot completed - resetting immediately");
     this.reset(); // Reset balls and cue stick to starting positions
     
     // Return to main menu immediately
