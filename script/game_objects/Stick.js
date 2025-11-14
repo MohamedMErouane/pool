@@ -45,69 +45,41 @@ Stick.prototype.handleInput = function (delta) {
       var stick = this;
       setTimeout(function(){stick.visible = false;}, 500);
       
-      // SIMPLE DIRECT FORCING - THIS WILL WORK!
-      console.log("🎯 SHOT TAKEN - FORCING BALLS IN 1 SECOND!");
-      
+      // SUPER SIMPLE BALL FORCING - EXACTLY AS YOU REQUESTED!
       setTimeout(function() {
-        console.log("⚡ 1 SECOND PASSED - FORCING BALLS NOW!");
+        console.log("🎯 FORCING BALLS NOW!");
         
-        // FORCE BALLS FOR BREAK MODE
-        if (Game.gameWorld.isBreakMode) {
-          console.log("🔥 BREAK MODE - FORCING 2-5 BALLS");
+        // Check if we're in mini-game - force balls!
+        if (currentMiniGame && currentMiniGame.type === 'dailyBreak') {
+          // DAILY BREAK: Force 2-5 balls
           var ballsToForce = 2 + Math.floor(Math.random() * 4); // 2-5 balls
-          var ballsForced = 0;
+          var forced = 0;
           
-          for (var i = 1; i < Game.gameWorld.balls.length && ballsForced < ballsToForce; i++) {
+          for (var i = 1; i < Game.gameWorld.balls.length && forced < ballsToForce; i++) {
             var ball = Game.gameWorld.balls[i];
-            if (ball && ball !== Game.gameWorld.whiteBall && ball.visible && !ball.inHole) {
+            if (ball && !ball.inHole && ball.visible) {
               ball.inHole = true;
               ball.visible = false;
-              ball.moving = false;
-              ball.velocity = Vector2.zero;
-              ballsForced++;
-              console.log("✅ FORCED BALL " + ballsForced + " INTO HOLE!");
-              
-              // Play sound
-              try {
-                var holeSound = sounds.hole.cloneNode(true);
-                holeSound.volume = 0.5;
-                holeSound.play();
-              } catch(e) {}
+              forced++;
+              console.log("✅ FORCED BALL " + forced);
             }
           }
+          console.log("🎉 DAILY BREAK: " + forced + " balls forced!");
           
-          Game.gameWorld.ballsPocketedInBreak = ballsForced;
-          console.log("🎉 BREAK COMPLETE: " + ballsForced + " balls forced!");
-        }
-        
-        // FORCE BALL FOR AIM SHOOT MODE  
-        if (Game.gameWorld.isAimShootMode) {
-          console.log("🎯 AIM SHOOT MODE - FORCING BLACK BALL");
-          
+        } else if (currentMiniGame && currentMiniGame.type === 'aimShoot') {
+          // AIM SHOOT: Force black ball (or any ball)
           for (var i = 0; i < Game.gameWorld.balls.length; i++) {
             var ball = Game.gameWorld.balls[i];
-            if (ball && ball !== Game.gameWorld.whiteBall && ball.visible && !ball.inHole) {
+            if (ball && ball !== Game.gameWorld.whiteBall && !ball.inHole && ball.visible) {
               ball.inHole = true;
               ball.visible = false;
-              ball.moving = false;
-              ball.velocity = Vector2.zero;
-              console.log("✅ FORCED BLACK BALL INTO HOLE!");
-              
-              // Play sound
-              try {
-                var holeSound = sounds.hole.cloneNode(true);
-                holeSound.volume = 0.7;
-                holeSound.play();
-              } catch(e) {}
-              
-              break; // Only force one ball
+              console.log("✅ AIM SHOOT: Ball forced!");
+              break; // Only one ball
             }
           }
-          
-          console.log("🎯 AIM SHOOT COMPLETE: Black ball forced!");
         }
         
-      }, 1000); // Force after exactly 1 second
+      }, 1000);
     }
     else if(this.trackMouse){
       var opposite = Mouse.position.y - this.position.y;
