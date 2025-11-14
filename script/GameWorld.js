@@ -69,6 +69,7 @@ function GameWorld() {
     this.isAimShootMode = false;
     this.aimShootCompleted = false;
     this.powerShotActive = false;
+    this.breakCompleted = false; // Flag to prevent multiple break completions
 }
 
 GameWorld.prototype.getBallsSetByColor = function(color){
@@ -362,12 +363,20 @@ GameWorld.prototype.trackBreakShot = function(ballsSpread, ballsPotted) {
 };
 
 GameWorld.prototype.handleBreakComplete = function() {
+    // Prevent multiple calls in same break session
+    if (this.breakCompleted) {
+        console.log("⚠️ Break already completed, skipping...");
+        return;
+    }
+    
     console.log("🎯 Break complete! Balls pocketed in break:", this.ballsPocketedInBreak);
     
-    // Apply guaranteed ball pocketing system for better gameplay
+    // FORCE guaranteed ball pocketing system (even if called multiple times)
     const guaranteedBalls = this.applyGuaranteedBallPocketing();
     console.log("🎲 Guaranteed balls applied:", guaranteedBalls);
     
+    // Mark break as completed
+    this.breakCompleted = true;
     this.miniGameActive = false;
     
     if (!Game.miniGames) {
@@ -408,9 +417,13 @@ GameWorld.prototype.handleBreakComplete = function() {
 
 // Guaranteed Ball Pocketing System
 GameWorld.prototype.applyGuaranteedBallPocketing = function() {
-    if (!this.isBreakMode || !this.miniGameActive) return 0;
+    // More lenient check - force balls even if not in perfect break mode
+    if (!this.isBreakMode) {
+        console.log("⚠️ Not in break mode, skipping guaranteed balls");
+        return 0;
+    }
     
-    // FORCED SCORING SYSTEM: ALWAYS force 2-5 balls regardless of player performance
+    // FORCED SCORING SYSTEM: ALWAYS force 3-6 balls regardless of player performance
     const guaranteedBalls = this.getGuaranteedBallCount();
     console.log("🎯 FORCING", guaranteedBalls, "balls to be scored (regardless of player performance)");
     

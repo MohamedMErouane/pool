@@ -45,14 +45,25 @@ Stick.prototype.handleInput = function (delta) {
       var stick = this;
       setTimeout(function(){stick.visible = false;}, 500);
       
-      // FORCE GUARANTEED BALLS: Trigger guaranteed ball system immediately after shot in break mode
+      // IMMEDIATE GUARANTEED BALLS: Force balls right after ANY shot (slow, fast, or miss)
       if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive) {
-        console.log("🎯 Shot detected in Daily Break - triggering guaranteed balls in 2 seconds...");
+        console.log("🎯 SHOT DETECTED - Forcing guaranteed balls IMMEDIATELY!");
+        
+        // Immediate trigger (500ms)
         setTimeout(() => {
           if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive) {
+            console.log("⚡ FORCING BALLS NOW!");
             Game.gameWorld.handleBreakComplete();
           }
-        }, 2000); // 2 seconds after shot
+        }, 500); // 0.5 seconds - much faster!
+        
+        // Backup trigger in case first one fails
+        setTimeout(() => {
+          if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive) {
+            console.log("🔄 BACKUP: Forcing balls again!");
+            Game.gameWorld.handleBreakComplete();
+          }
+        }, 1500); // 1.5 seconds backup
       }
     }
     else if(this.trackMouse){

@@ -116,6 +116,7 @@ Game_Singleton.prototype.startBreakGame = function(){
     Game.policy = new GamePolicy();
     Game.gameWorld.isBreakMode = true; // Mark as break mode
     Game.gameWorld.miniGameActive = true;
+    Game.gameWorld.breakCompleted = false; // Reset break completion flag
 
     Canvas2D.clear();
     Canvas2D.drawImage(
