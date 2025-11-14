@@ -108,6 +108,21 @@ Game_Singleton.prototype.startNewGame = function(){
 Game_Singleton.prototype.startBreakGame = function(){
     Canvas2D._canvas.style.cursor = "auto";
 
+    // CLIENT SPECIFICATION: Check if player has attempts left
+    const today = new Date().toDateString();
+    const lastPlayDate = localStorage.getItem('lastPlayDate') || '';
+    const dailyBreakAttempts = parseInt(localStorage.getItem('dailyBreakAttempts') || '0');
+    
+    // Reset attempts if it's a new day
+    if (lastPlayDate !== today) {
+        localStorage.setItem('dailyBreakAttempts', '0');
+        localStorage.setItem('lastPlayDate', today);
+    } else if (dailyBreakAttempts >= 3) {
+        // Show 24-hour message if player has used all attempts
+        this.show24HourMessage('Daily Break');
+        return;
+    }
+
     // Ensure sound is enabled for break mode
     Game.sound = true;
     console.log("🔊 Sound enabled for Daily Break mode");
@@ -115,16 +130,16 @@ Game_Singleton.prototype.startBreakGame = function(){
     Game.gameWorld = new GameWorld();
     Game.policy = new GamePolicy();
     
-    // CLIENT REQUIREMENT: Initialize guaranteed ball system for break mode
-    Game.gameWorld.isBreakMode = true; // Mark as break mode
+    // CLIENT SPECIFICATION: Initialize break mode
+    Game.gameWorld.isBreakMode = true;
     Game.gameWorld.miniGameActive = true;
-    Game.gameWorld.breakCompleted = false; // Reset break completion flag
-    Game.gameWorld.instantBallsForced = false; // Reset instant ball forcing flag
-    Game.gameWorld.ballsForced = false; // Reset simple ball forcing flag
-    Game.gameWorld.aimShootTargetForced = false; // Reset aim shoot flag
+    Game.gameWorld.breakCompleted = false;
+    Game.gameWorld.instantBallsForced = false;
+    Game.gameWorld.ballsForced = false;
+    Game.gameWorld.aimShootTargetForced = false;
     
-    console.log("🎯 DAILY BREAK INITIALIZED - GUARANTEED BALL SYSTEM ACTIVE");
-    console.log("📋 CLIENT REQUIREMENT: Balls MUST always go into holes according to predefined scenarios");
+    console.log(`🎯 DAILY BREAK STARTED - Attempt ${dailyBreakAttempts + 1} of 3`);
+    console.log("📋 CLIENT SPEC: Ball will slowly roll into hole, show points, auto-reset");
 
     Canvas2D.clear();
     Canvas2D.drawImage(
@@ -137,25 +152,26 @@ Game_Singleton.prototype.startBreakGame = function(){
 
     setTimeout(()=>{
         Game.mainLoop();
-        
-        // BACKUP ENFORCEMENT: Ensure balls are forced even if player doesn't shoot
-        setTimeout(() => {
-            if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive) {
-                console.log("⏰ BACKUP ENFORCEMENT: Forcing guaranteed balls (client requirement)");
-                if (!Game.gameWorld.ballsForced) {
-                    Game.gameWorld.forceGuaranteedBallsSimple();
-                }
-                // Complete the break after backup forcing
-                setTimeout(() => {
-                    Game.gameWorld.handleBreakComplete();
-                }, 2000);
-            }
-        }, 8000); // 8 seconds backup timer
     },3000);
 }
 
 Game_Singleton.prototype.startAimShootGame = function(){
     Canvas2D._canvas.style.cursor = "auto";
+
+    // CLIENT SPECIFICATION: Check if player has attempts left
+    const today = new Date().toDateString();
+    const lastPlayDate = localStorage.getItem('lastPlayDate') || '';
+    const aimShootAttempts = parseInt(localStorage.getItem('aimShootAttempts') || '0');
+    
+    // Reset attempts if it's a new day
+    if (lastPlayDate !== today) {
+        localStorage.setItem('aimShootAttempts', '0');
+        localStorage.setItem('lastPlayDate', today);
+    } else if (aimShootAttempts >= 3) {
+        // Show 24-hour message if player has used all attempts
+        this.show24HourMessage('Aim Shot');
+        return;
+    }
 
     // Ensure sound is enabled for aim shoot mode
     Game.sound = true;
@@ -165,14 +181,14 @@ Game_Singleton.prototype.startAimShootGame = function(){
     Game.gameWorld = new AimShootMode();
     Game.policy = new GamePolicy();
     
-    // CLIENT REQUIREMENT: Initialize guaranteed target system for aim & shoot mode
-    Game.gameWorld.isAimShootMode = true; // Mark as aim shoot mode
+    // CLIENT SPECIFICATION: Initialize aim shoot mode
+    Game.gameWorld.isAimShootMode = true;
     Game.gameWorld.miniGameActive = true;
     Game.gameWorld.aimShootCompleted = false;
-    Game.gameWorld.aimShootTargetForced = false; // Initialize target forcing flag
+    Game.gameWorld.aimShootTargetForced = false;
     
-    console.log("🎯 AIM & SHOOT INITIALIZED - GUARANTEED TARGET SYSTEM ACTIVE");
-    console.log("📋 CLIENT REQUIREMENT: Ball MUST always go into hole, only rewards vary");
+    console.log(`🎯 AIM SHOOT STARTED - Attempt ${aimShootAttempts + 1} of 3`);
+    console.log("📋 CLIENT SPEC: Ball must ALWAYS go into hole, show points, auto-reset");
 
     Canvas2D.clear();
     Canvas2D.drawImage(
@@ -185,18 +201,46 @@ Game_Singleton.prototype.startAimShootGame = function(){
 
     setTimeout(()=>{
         Game.mainLoop();
-        
-        // BACKUP ENFORCEMENT: Ensure target ball is forced even if player doesn't shoot
-        setTimeout(() => {
-            if (Game.gameWorld && Game.gameWorld.isAimShootMode && Game.gameWorld.miniGameActive) {
-                console.log("⏰ BACKUP ENFORCEMENT: Forcing target ball (client requirement)");
-                if (!Game.gameWorld.aimShootTargetForced) {
-                    Game.gameWorld.forceAimShootTargetBall();
-                }
-            }
-        }, 6000); // 6 seconds backup timer
-    },1000); // Shorter delay for aim shoot mode
+    },1000);
 }
+
+// Show 24-hour wait message
+Game_Singleton.prototype.show24HourMessage = function(mode) {
+    console.log(`⏰ Showing 24-hour message for ${mode}`);
+    
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '50%';
+    overlay.style.left = '50%';
+    overlay.style.transform = 'translate(-50%, -50%)';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+    overlay.style.color = 'white';
+    overlay.style.padding = '50px';
+    overlay.style.borderRadius = '15px';
+    overlay.style.textAlign = 'center';
+    overlay.style.fontSize = '20px';
+    overlay.style.fontWeight = 'bold';
+    overlay.style.zIndex = '10000';
+    overlay.style.border = '3px solid #FF4444';
+    
+    const message = mode === 'Aim Shot' ? 
+        'You have completed 3 shots. Please come back in 24 hours to play again.' :
+        'The game will be available again after 24 hours, and the player cannot play until then.';
+    
+    overlay.innerHTML = `
+        <div style="margin-bottom: 25px; font-size: 26px; color: #FF6666;">3 Attempts Completed!</div>
+        <div style="margin-bottom: 20px; line-height: 1.5;">${message}</div>
+        <div style="font-size: 16px; color: #CCCCCC;">Come back tomorrow for more attempts!</div>
+        <div style="margin-top: 25px;">
+            <button onclick="this.parentElement.parentElement.remove();" 
+                    style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+                OK
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+};
 
 Game_Singleton.prototype.continueGame = function(){
     Canvas2D._canvas.style.cursor = "auto";

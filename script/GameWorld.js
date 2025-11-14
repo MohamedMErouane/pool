@@ -73,6 +73,21 @@ function GameWorld() {
     this.breakCompleted = false; // Flag to prevent multiple break completions
     this.instantBallsForced = false; // Flag for instant ball forcing
     this.ballsForced = false; // Simple flag for guaranteed ball forcing
+    
+    // CLIENT SPECIFICATION: 3-shot system tracking
+    this.dailyBreakAttempts = parseInt(localStorage.getItem('dailyBreakAttempts') || '0');
+    this.aimShootAttempts = parseInt(localStorage.getItem('aimShootAttempts') || '0');
+    this.lastPlayDate = localStorage.getItem('lastPlayDate') || '';
+    
+    // Check if it's a new day (reset attempts)
+    const today = new Date().toDateString();
+    if (this.lastPlayDate !== today) {
+        this.dailyBreakAttempts = 0;
+        this.aimShootAttempts = 0;
+        localStorage.setItem('dailyBreakAttempts', '0');
+        localStorage.setItem('aimShootAttempts', '0');
+        localStorage.setItem('lastPlayDate', today);
+    }
 }
 
 GameWorld.prototype.getBallsSetByColor = function(color){

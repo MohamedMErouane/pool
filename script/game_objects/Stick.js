@@ -45,49 +45,22 @@ Stick.prototype.handleInput = function (delta) {
       var stick = this;
       setTimeout(function(){stick.visible = false;}, 500);
       
-      // AGGRESSIVE FORCING - FORCE BALLS 1 SECOND AFTER SHOT (EVEN IF PLAYER MISSES)
-      console.log("🎯 SHOT DETECTED - BALLS WILL BE FORCED IN 1 SECOND!");
+      // CLIENT SPECIFICATION: Ball slowly rolls into hole with realistic motion
+      console.log("🎯 SHOT DETECTED - IMPLEMENTING CLIENT SPECIFICATION!");
       
-      // FORCE BALLS AFTER 1 SECOND - GUARANTEED!
-      setTimeout(() => {
-        console.log("⚡ 1 SECOND PASSED - FORCING BALLS NOW!");
-        
-        if (Game.gameWorld && Game.gameWorld.isBreakMode) {
-          console.log("🔥 DAILY BREAK - FORCING 2-5 BALLS GUARANTEED!");
-          this.forceBreakBallsAfterShot();
-        }
-        
-        if (Game.gameWorld && Game.gameWorld.isAimShootMode) {
-          console.log("🎯 AIM SHOOT - FORCING BLACK BALL GUARANTEED!");
-          this.forceBlackBallAfterShot();
-        }
-      }, 1000); // EXACTLY 1 SECOND AFTER SHOT
+      if (Game.gameWorld && Game.gameWorld.isBreakMode) {
+        console.log("🔥 DAILY BREAK - Ball will slowly roll into hole");
+        setTimeout(() => {
+          this.makeBreakBallSlowlyRollIntoHole();
+        }, 1000);
+      }
       
-      // BACKUP FORCING - In case first attempt fails
-      setTimeout(() => {
-        console.log("⚡ BACKUP FORCING - ENSURING BALLS ARE SCORED!");
-        
-        if (Game.gameWorld && Game.gameWorld.isBreakMode) {
-          this.forceBreakBallsAfterShot();
-        }
-        
-        if (Game.gameWorld && Game.gameWorld.isAimShootMode) {
-          this.forceBlackBallAfterShot();
-        }
-      }, 2000); // 2 seconds backup
-      
-      // FINAL BACKUP - Ultimate guarantee
-      setTimeout(() => {
-        console.log("⚡ FINAL BACKUP - ULTIMATE BALL FORCING!");
-        
-        if (Game.gameWorld && Game.gameWorld.isBreakMode) {
-          this.forceBreakBallsAfterShot();
-        }
-        
-        if (Game.gameWorld && Game.gameWorld.isAimShootMode) {
-          this.forceBlackBallAfterShot();
-        }
-      }, 3000); // 3 seconds final backup
+      if (Game.gameWorld && Game.gameWorld.isAimShootMode) {
+        console.log("🎯 AIM SHOOT - Ball will slowly roll into hole (guaranteed)");
+        setTimeout(() => {
+          this.makeAimShotBallSlowlyRollIntoHole();
+        }, 1000);
+      }
     }
     else if(this.trackMouse){
       var opposite = Mouse.position.y - this.position.y;
@@ -243,143 +216,291 @@ Stick.prototype.drawPowerIndicator = function() {
   ctx.restore();
 };
 
-// AGGRESSIVE BALL FORCING - FORCES BALLS 1 SECOND AFTER SHOT (EVEN IF PLAYER MISSES)
-Stick.prototype.forceBreakBallsAfterShot = function() {
-  console.log("🔥 FORCING 2-5 BALLS AFTER SHOT (EVEN IF MISSED)!");
+// CLIENT SPECIFICATION: Balls slowly roll into hole with realistic motion
+Stick.prototype.makeBreakBallSlowlyRollIntoHole = function() {
+  console.log("🎱 DAILY BREAK: Making balls slowly roll into holes");
   
   try {
-    // Force 2-5 balls ALWAYS (regardless of player performance)
-    let targetCount = 2 + Math.floor(Math.random() * 4); // 2-5 balls guaranteed
-    let forcedCount = 0;
+    // Find balls to make roll into holes (2-5 balls as per specification)
+    const targetCount = 2 + Math.floor(Math.random() * 4); // 2-5 balls
+    let ballsProcessed = 0;
     
-    console.log("🎯 FORCING", targetCount, "BALLS - GUARANTEED SCORING!");
-    
-    for (let i = 1; i < Game.gameWorld.balls.length && forcedCount < targetCount; i++) {
-      let ball = Game.gameWorld.balls[i];
+    for (let i = 1; i < Game.gameWorld.balls.length && ballsProcessed < targetCount; i++) {
+      const ball = Game.gameWorld.balls[i];
       if (ball && ball !== Game.gameWorld.whiteBall && ball.visible && !ball.inHole) {
-        // FORCE IMMEDIATELY - NO CONDITIONS, NO PHYSICS
-        ball.inHole = true;
-        ball.visible = false;
-        ball.moving = false;
-        ball.velocity = Vector2.zero;
-        ball.position = new Vector2(-2000, -2000); // Move far off screen
-        forcedCount++;
         
-        console.log(`✅ FORCED BALL ${forcedCount} INTO HOLE!`);
-        
-        // Play hole sound for each ball
-        if (Game.sound && SOUND_ON && sounds && sounds.hole) {
-          try {
-            setTimeout(() => {
-              var holeSound = sounds.hole.cloneNode(true);
-              holeSound.volume = 0.5;
-              holeSound.play();
-            }, forcedCount * 200); // Stagger sounds
-          } catch (error) {
-            console.log("Sound error:", error);
-          }
-        }
-        
-        // Trigger hole detection for each ball
-        setTimeout(() => {
-          if (Game.policy && Game.policy.handleBallInHole) {
-            Game.policy.handleBallInHole(ball);
-          }
-        }, forcedCount * 100); // Stagger hole detections
+        // Make ball slowly roll toward a hole with realistic physics
+        this.animateBallSlowlyToHole(ball, ballsProcessed);
+        ballsProcessed++;
       }
     }
     
-    // Update the break count
-    if (Game.gameWorld) {
-      Game.gameWorld.ballsPocketedInBreak += forcedCount;
-    }
+    console.log(`🎱 DAILY BREAK: ${ballsProcessed} balls will slowly roll into holes`);
     
-    console.log(`✅ AGGRESSIVE FORCING COMPLETE: ${forcedCount} balls FORCED into holes!`);
-    
-    // Complete the break after forcing
+    // After all balls are in holes, show points and reset
     setTimeout(() => {
-      if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.handleBreakComplete) {
-        console.log("🔄 Completing break with forced balls");
-        Game.gameWorld.handleBreakComplete();
-      }
-    }, 2000);
+      this.handleBreakCompletion();
+    }, 4000 + (ballsProcessed * 1000)); // Wait for all animations
     
   } catch (error) {
-    console.error("❌ Error in aggressive break ball forcing:", error);
+    console.error("❌ Error in break ball slow roll:", error);
   }
 };
 
-Stick.prototype.forceBlackBallAfterShot = function() {
-  console.log("🎯 FORCING BLACK BALL AFTER SHOT (ALWAYS GUARANTEED)!");
+Stick.prototype.makeAimShotBallSlowlyRollIntoHole = function() {
+  console.log("🎯 AIM SHOT: Making target ball slowly roll into hole");
   
   try {
-    // Find and force the black ball (8-ball) or any non-white ball
-    let ballForced = false;
-    
+    // Find the target ball (black ball or any visible ball)
     for (let i = 0; i < Game.gameWorld.balls.length; i++) {
-      let ball = Game.gameWorld.balls[i];
-      
-      // Look for black ball first (8-ball), then any visible ball
+      const ball = Game.gameWorld.balls[i];
       if (ball && ball !== Game.gameWorld.whiteBall && ball.visible && !ball.inHole) {
-        // FORCE BLACK BALL IMMEDIATELY - GUARANTEED
+        
+        // Make ball slowly roll toward hole with realistic motion
+        this.animateBallSlowlyToHole(ball, 0, true); // true = aim shot mode
+        
+        // After ball is in hole, show points and reset
+        setTimeout(() => {
+          this.handleAimShotCompletion();
+        }, 3000);
+        
+        break; // Only one ball in aim shot mode
+      }
+    }
+    
+  } catch (error) {
+    console.error("❌ Error in aim shot ball slow roll:", error);
+  }
+};
+
+// Animate ball slowly rolling into hole with realistic physics
+Stick.prototype.animateBallSlowlyToHole = function(ball, delay, isAimShot = false) {
+  console.log(`🎳 Animating ball slowly to hole (delay: ${delay}s)`);
+  
+  setTimeout(() => {
+    // Create slow, realistic rolling motion toward nearest hole
+    const holePositions = [
+      new Vector2(88, 88),    // Top-left hole
+      new Vector2(650, 88),   // Top-middle hole  
+      new Vector2(1212, 88),  // Top-right hole
+      new Vector2(88, 738),   // Bottom-left hole
+      new Vector2(650, 738),  // Bottom-middle hole
+      new Vector2(1212, 738)  // Bottom-right hole
+    ];
+    
+    // Find nearest hole
+    let nearestHole = holePositions[0];
+    let minDistance = ball.position.distanceFrom(nearestHole);
+    
+    holePositions.forEach(holePos => {
+      const distance = ball.position.distanceFrom(holePos);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestHole = holePos;
+      }
+    });
+    
+    // Calculate direction to hole
+    const direction = nearestHole.subtract(ball.position);
+    const distance = direction.length();
+    direction.normalize();
+    
+    // Set slow velocity toward hole
+    ball.velocity = direction.multiply(Math.min(distance * 2, 50)); // Slow speed
+    ball.moving = true;
+    
+    console.log(`🎳 Ball starting slow roll toward hole at (${nearestHole.x}, ${nearestHole.y})`);
+    
+    // Monitor ball movement and force into hole when close
+    const checkInterval = setInterval(() => {
+      const distanceToHole = ball.position.distanceFrom(nearestHole);
+      
+      if (distanceToHole < 40 || !ball.moving) {
+        // Ball is close enough - force it into hole smoothly
+        clearInterval(checkInterval);
+        
         ball.inHole = true;
         ball.visible = false;
         ball.moving = false;
         ball.velocity = Vector2.zero;
-        ball.position = new Vector2(-2000, -2000); // Move far off screen
-        
-        console.log(`✅ BLACK BALL FORCED INTO HOLE - GUARANTEED SCORE!`);
-        ballForced = true;
+        ball.position = nearestHole.copy();
         
         // Play hole sound
         if (Game.sound && SOUND_ON && sounds && sounds.hole) {
           try {
-            var holeSound = sounds.hole.cloneNode(true);
-            holeSound.volume = 0.7;
+            const holeSound = sounds.hole.cloneNode(true);
+            holeSound.volume = 0.6;
             holeSound.play();
           } catch (error) {
             console.log("Sound error:", error);
           }
         }
         
-        // Trigger hole detection
-        setTimeout(() => {
-          if (Game.policy && Game.policy.handleBallInHole) {
-            Game.policy.handleBallInHole(ball);
-          }
-        }, 100);
+        // Update ball count
+        if (!isAimShot && Game.gameWorld) {
+          Game.gameWorld.ballsPocketedInBreak++;
+        }
         
-        // Only force one ball in aim & shoot mode
-        break;
+        // Trigger hole detection
+        if (Game.policy && Game.policy.handleBallInHole) {
+          Game.policy.handleBallInHole(ball);
+        }
+        
+        console.log("✅ Ball slowly rolled into hole successfully!");
       }
+    }, 100); // Check every 100ms
+    
+  }, delay * 1000); // Stagger ball animations
+};
+
+// Handle break completion with points display and reset
+Stick.prototype.handleBreakCompletion = function() {
+  console.log("🎯 DAILY BREAK COMPLETION - Showing points and resetting");
+  
+  const ballsScored = Game.gameWorld.ballsPocketedInBreak || 0;
+  const points = ballsScored * 15; // Points calculation
+  
+  // Increment attempt counter
+  Game.gameWorld.dailyBreakAttempts++;
+  localStorage.setItem('dailyBreakAttempts', Game.gameWorld.dailyBreakAttempts.toString());
+  
+  // Show points display
+  this.showPointsDisplay(points, ballsScored, 'DAILY BREAK');
+  
+  // Check if this was the 3rd attempt
+  setTimeout(() => {
+    if (Game.gameWorld.dailyBreakAttempts >= 3) {
+      // Show 24-hour message
+      this.show24HourMessage('Daily Break');
+    } else {
+      // Reset to initial screen for next attempt
+      this.resetToInitialScreen();
     }
-    
-    if (!ballForced) {
-      console.log("⚠️ No ball found to force - checking AimShootMode");
-      
-      // If in AimShootMode, force the target ball
-      if (Game.gameWorld.blackBall && Game.gameWorld.blackBall.visible) {
-        Game.gameWorld.blackBall.inHole = true;
-        Game.gameWorld.blackBall.visible = false;
-        Game.gameWorld.blackBall.moving = false;
-        Game.gameWorld.blackBall.velocity = Vector2.zero;
-        Game.gameWorld.blackBall.position = new Vector2(-2000, -2000);
-        console.log("✅ AIMSHOOTMODE: Black ball FORCED into hole!");
-        ballForced = true;
-      }
+  }, 3000); // Show points for 3 seconds
+};
+
+// Handle aim shot completion with points display and reset
+Stick.prototype.handleAimShotCompletion = function() {
+  console.log("🎯 AIM SHOT COMPLETION - Showing points and resetting");
+  
+  const points = 25; // Fixed points for aim shot
+  
+  // Increment attempt counter
+  Game.gameWorld.aimShootAttempts++;
+  localStorage.setItem('aimShootAttempts', Game.gameWorld.aimShootAttempts.toString());
+  
+  // Show points display
+  this.showPointsDisplay(points, 1, 'AIM SHOT');
+  
+  // Check if this was the 3rd attempt
+  setTimeout(() => {
+    if (Game.gameWorld.aimShootAttempts >= 3) {
+      // Show 24-hour message
+      this.show24HourMessage('Aim Shot');
+    } else {
+      // Reset to initial screen for next attempt
+      this.resetToInitialScreen();
     }
-    
-    console.log(`✅ AIM SHOOT FORCING COMPLETE: Target ball FORCED into hole!`);
-    
-    // Complete the aim shoot after forcing
-    setTimeout(() => {
-      if (Game.gameWorld && Game.gameWorld.isAimShootMode && Game.gameWorld.handleAimShootComplete) {
-        console.log("🔄 Completing aim shoot with forced black ball");
-        Game.gameWorld.handleAimShootComplete();
-      }
-    }, 1500);
-    
-  } catch (error) {
-    console.error("❌ Error in aggressive black ball forcing:", error);
+  }, 3000); // Show points for 3 seconds
+};
+
+// Show points display overlay
+Stick.prototype.showPointsDisplay = function(points, ballsScored, mode) {
+  console.log(`📊 Showing points display: ${points} points for ${ballsScored} balls in ${mode}`);
+  
+  // Create points display overlay
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.top = '50%';
+  overlay.style.left = '50%';
+  overlay.style.transform = 'translate(-50%, -50%)';
+  overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+  overlay.style.color = 'white';
+  overlay.style.padding = '40px';
+  overlay.style.borderRadius = '10px';
+  overlay.style.textAlign = 'center';
+  overlay.style.fontSize = '24px';
+  overlay.style.fontWeight = 'bold';
+  overlay.style.zIndex = '9999';
+  overlay.style.border = '3px solid #gold';
+  
+  overlay.innerHTML = `
+    <div style="margin-bottom: 20px; font-size: 28px; color: #FFD700;">${mode} COMPLETE!</div>
+    <div style="margin-bottom: 15px;">Balls Scored: ${ballsScored}</div>
+    <div style="margin-bottom: 15px; font-size: 32px; color: #00FF00;">+${points} POINTS</div>
+    <div style="font-size: 16px; color: #CCCCCC;">Attempt ${mode === 'DAILY BREAK' ? Game.gameWorld.dailyBreakAttempts : Game.gameWorld.aimShootAttempts} of 3</div>
+  `;
+  
+  document.body.appendChild(overlay);
+  
+  // Remove overlay after 3 seconds
+  setTimeout(() => {
+    document.body.removeChild(overlay);
+  }, 3000);
+};
+
+// Show 24-hour wait message
+Stick.prototype.show24HourMessage = function(mode) {
+  console.log(`⏰ Showing 24-hour message for ${mode}`);
+  
+  // Create 24-hour message overlay
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.top = '50%';
+  overlay.style.left = '50%';
+  overlay.style.transform = 'translate(-50%, -50%)';
+  overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+  overlay.style.color = 'white';
+  overlay.style.padding = '50px';
+  overlay.style.borderRadius = '15px';
+  overlay.style.textAlign = 'center';
+  overlay.style.fontSize = '20px';
+  overlay.style.fontWeight = 'bold';
+  overlay.style.zIndex = '10000';
+  overlay.style.border = '3px solid #FF4444';
+  
+  const message = mode === 'Aim Shot' ? 
+    'You have completed 3 shots. Please come back in 24 hours to play again.' :
+    'The game will be available again after 24 hours, and the player cannot play until then.';
+  
+  overlay.innerHTML = `
+    <div style="margin-bottom: 25px; font-size: 26px; color: #FF6666;">3 Attempts Completed!</div>
+    <div style="margin-bottom: 20px; line-height: 1.5;">${message}</div>
+    <div style="font-size: 16px; color: #CCCCCC;">Come back tomorrow for more attempts!</div>
+    <div style="margin-top: 25px;">
+      <button onclick="this.parentElement.parentElement.remove(); Game.initMenus(false); Game.mainMenu.active = true; GAME_STOPPED = true;" 
+              style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
+        Return to Menu
+      </button>
+    </div>
+  `;
+  
+  document.body.appendChild(overlay);
+};
+
+// Reset to initial screen
+Stick.prototype.resetToInitialScreen = function() {
+  console.log("🔄 Resetting to initial screen for next attempt");
+  
+  // Reset game state
+  Game.gameWorld.isBreakMode = false;
+  Game.gameWorld.isAimShootMode = false;
+  Game.gameWorld.miniGameActive = false;
+  Game.gameWorld.ballsForced = false;
+  Game.gameWorld.aimShootTargetForced = false;
+  Game.gameWorld.ballsPocketedInBreak = 0;
+  
+  // Reset balls to initial positions
+  for (var i = 0; i < Game.gameWorld.balls.length; i++) {
+    Game.gameWorld.balls[i].reset();
+    Game.gameWorld.balls[i].visible = true;
+    Game.gameWorld.balls[i].inHole = false;
   }
+  
+  // Return to main menu
+  Game.initMenus(false);
+  Game.mainMenu.active = true;
+  GAME_STOPPED = true;
+  
+  console.log("✅ Reset to initial screen complete");
 };
