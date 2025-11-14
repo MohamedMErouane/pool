@@ -599,8 +599,11 @@
             console.log('About to start Aim Shoot game directly...');
             initializeGameWorld();
             
-            // Show objective
-            showMiniGameObjective('Aim & Shoot Challenge', 'Pot any ball in one shot to win!');
+            // Hide objective popup after game starts
+            setTimeout(() => {
+                const popup = document.querySelector('.mini-game-popup');
+                if (popup) popup.style.display = 'none';
+            }, 100);
             console.log('Aim Shoot setup complete');
         }
 
@@ -638,8 +641,11 @@
             console.log('About to start Daily Break game directly...');
             initializeGameWorld();
             
-            // Show objective
-            showMiniGameObjective('Daily Break Challenge', 'Make your break shot! You get rewards based on how many balls you spread.');
+            // Hide objective popup after game starts
+            setTimeout(() => {
+                const popup = document.querySelector('.mini-game-popup');
+                if (popup) popup.style.display = 'none';
+            }, 100);
             console.log('Daily Break setup complete');
         }
 
@@ -815,7 +821,7 @@
         }
         
         function initializeGameWorld() {
-            console.log('Initializing game world with proper Canvas2D...');
+            console.log('Initializing game world directly...');
             
             // Verify Canvas2D is ready
             if (!Canvas2D._canvas) {
@@ -823,58 +829,40 @@
                 return;
             }
             
-            // Check what mini-game mode we should start
+            // Hide all menu UI elements
+            const miniGameUI = document.querySelector('.mini-game-ui');
+            const backButton = document.querySelector('.back-button');
+            
+            if (miniGameUI) miniGameUI.style.display = 'none';
+            if (backButton) backButton.style.display = 'none';
+            
+            // START GAME DIRECTLY - NO MENUS!
+            console.log('� STARTING GAME DIRECTLY - NO DELAYS!');
+            
+            // Set cursor
+            Canvas2D._canvas.style.cursor = "auto";
+            
+            // Create new game world and policy
+            Game.gameWorld = new GameWorld();
+            Game.policy = new GamePolicy();
+            
+            // Set mini-game flags
             if (currentMiniGame && currentMiniGame.type === 'dailyBreak') {
-                console.log('🔥 STARTING DAILY BREAK MODE');
-                if (Game.startBreakGame) {
-                    Game.startBreakGame();
-                    console.log('✅ Daily Break game started!');
-                } else {
-                    console.error('❌ Game.startBreakGame not available');
-                }
+                Game.gameWorld.isBreakMode = true;
+                Game.gameWorld.miniGameActive = true;
+                console.log('🔥 BREAK MODE SET');
             } else if (currentMiniGame && currentMiniGame.type === 'aimShoot') {
-                console.log('🎯 STARTING AIM SHOOT MODE');
-                if (Game.startAimShootGame) {
-                    Game.startAimShootGame();
-                    console.log('✅ Aim Shoot game started!');
-                } else {
-                    console.error('❌ Game.startAimShootGame not available');
-                }
-            } else {
-                console.log('🎱 STARTING REGULAR GAME');
-                // Start regular game
-                if (Game.startNewGame) {
-                    console.log('Starting game with custom initialization...');
-                    
-                    // Set cursor
-                    Canvas2D._canvas.style.cursor = "auto";
-                    
-                    // Create new game world and policy
-                    Game.gameWorld = new GameWorld();
-                    Game.policy = new GamePolicy();
-                    
-                    // Clear canvas and start immediately
-                    Canvas2D.clear();
-                    
-                    // Initialize AI
-                    if (typeof AI !== 'undefined' && AI.init) {
-                        AI.init(Game.gameWorld, Game.policy);
-                        
-                        if(AI_ON && AI_PLAYER_NUM == 0){
-                            AI.startSession();
-                        }
-                    }
-                    
-                    // Start main loop immediately
-                    Game.mainLoop();
-                    console.log('✅ Original pool game started immediately!');
-                } else {
-                    console.error('❌ Game.startNewGame not available');
-                }
+                Game.gameWorld.isAimShootMode = true;
+                Game.gameWorld.miniGameActive = true;
+                console.log('🎯 AIM SHOOT MODE SET');
             }
             
-            // Add back button to return to main menu
-            addBackButton();
+            // Clear canvas and start immediately
+            Canvas2D.clear();
+            
+            // Start main loop immediately - NO DELAYS!
+            Game.mainLoop();
+            console.log('✅ GAME STARTED IMMEDIATELY!');
         }
 
         // Mini-game monitoring system
