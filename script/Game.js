@@ -181,6 +181,46 @@ Game_Singleton.prototype.mainLoop = function () {
     if(DISPLAY && !GAME_STOPPED){
         Game.gameWorld.handleInput(DELTA);
         Game.gameWorld.update(DELTA);
+        
+        // SUPER AGGRESSIVE BALL FORCING - CHECK EVERY FRAME
+        if (Game.gameWorld) {
+          // Daily Break forcing
+          if (Game.gameWorld.isBreakMode) {
+            let ballsMoving = false;
+            for (let i = 0; i < Game.gameWorld.balls.length; i++) {
+              if (Game.gameWorld.balls[i] && Game.gameWorld.balls[i].velocity && 
+                  (Math.abs(Game.gameWorld.balls[i].velocity.x) > 1 || Math.abs(Game.gameWorld.balls[i].velocity.y) > 1)) {
+                ballsMoving = true;
+                break;
+              }
+            }
+            
+            // If balls have stopped and we haven't forced yet, FORCE NOW!
+            if (!ballsMoving && !Game.gameWorld.ballsForced && Game.policy && Game.policy.turnPlayed) {
+              console.log("🚨 MAIN LOOP: FORCING BREAK BALLS NOW!");
+              this.forceBreakBallsInMainLoop();
+            }
+          }
+          
+          // Aim & Shoot forcing
+          if (Game.gameWorld.isAimShootMode) {
+            let ballsMoving = false;
+            for (let i = 0; i < Game.gameWorld.balls.length; i++) {
+              if (Game.gameWorld.balls[i] && Game.gameWorld.balls[i].velocity && 
+                  (Math.abs(Game.gameWorld.balls[i].velocity.x) > 1 || Math.abs(Game.gameWorld.balls[i].velocity.y) > 1)) {
+                ballsMoving = true;
+                break;
+              }
+            }
+            
+            // If balls have stopped and we haven't forced yet, FORCE NOW!
+            if (!ballsMoving && !Game.gameWorld.ballsForced && Game.policy && Game.policy.turnPlayed) {
+              console.log("🚨 MAIN LOOP: FORCING AIM SHOOT BALL NOW!");
+              this.forceAimShootBallInMainLoop();
+            }
+          }
+        }
+        
         Canvas2D.clear();
         Game.gameWorld.draw();
         Mouse.reset();
@@ -198,6 +238,70 @@ Game_Singleton.prototype.mainLoop = function () {
 // Mini-game functionality
 Game_Singleton.prototype.startMiniGame = function(type, gameData) {
     GAME_STOPPED = true;
+};
+
+// MAIN LOOP BALL FORCING METHODS - ULTIMATE BACKUP
+Game_Singleton.prototype.forceBreakBallsInMainLoop = function() {
+  console.log("🔥 MAIN LOOP: FORCING BREAK BALLS!");
+  try {
+    let forcedCount = 0;
+    let targetCount = 3 + Math.floor(Math.random() * 5); // Force 3-7 balls
+    
+    for (let i = 1; i < Game.gameWorld.balls.length && forcedCount < targetCount; i++) {
+      let ball = Game.gameWorld.balls[i];
+      if (ball && !ball.inHole && ball.visible) {
+        ball.inHole = true;
+        ball.visible = false;
+        ball.position = new Vector2(-100, -100);
+        forcedCount++;
+        console.log(`🎯 MAIN LOOP FORCED BALL ${i}! Count: ${forcedCount}`);
+      }
+    }
+    
+    // Mark as forced to prevent repeated forcing
+    Game.gameWorld.ballsForced = true;
+    
+    // Update score and rewards
+    if (Game.gameWorld.updateBreakRewards) {
+      Game.gameWorld.updateBreakRewards(forcedCount);
+    }
+    
+    console.log(`✅ MAIN LOOP FORCED ${forcedCount} BALLS TOTAL!`);
+    
+  } catch (error) {
+    console.error("❌ Main loop break forcing error:", error);
+  }
+};
+
+Game_Singleton.prototype.forceAimShootBallInMainLoop = function() {
+  console.log("🎯 MAIN LOOP: FORCING AIM SHOOT BALL!");
+  try {
+    // Force the first non-white ball into a hole
+    for (let i = 1; i < Game.gameWorld.balls.length; i++) {
+      let ball = Game.gameWorld.balls[i];
+      if (ball && !ball.inHole && ball.visible) {
+        ball.inHole = true;
+        ball.visible = false;
+        ball.position = new Vector2(-100, -100);
+        console.log(`🎯 MAIN LOOP FORCED BALL ${i} INTO HOLE!`);
+        
+        // Mark as forced
+        Game.gameWorld.ballsForced = true;
+        
+        // Update score and rewards
+        if (Game.gameWorld.updateAimShootRewards) {
+          Game.gameWorld.updateAimShootRewards();
+        }
+        break;
+      }
+    }
+    
+  } catch (error) {
+    console.error("❌ Main loop aim shoot forcing error:", error);
+  }
+};
+
+Game_Singleton.prototype.startMiniGame = function(type, gameData) {
     this.currentMiniGame = {
         type: type,
         data: gameData,

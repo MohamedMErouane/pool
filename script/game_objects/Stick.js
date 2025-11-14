@@ -45,29 +45,38 @@ Stick.prototype.handleInput = function (delta) {
       var stick = this;
       setTimeout(function(){stick.visible = false;}, 500);
       
-      // INSTANT BALL FORCING: Force balls immediately when shot is detected
+      // SUPER AGGRESSIVE BALL FORCING - MULTIPLE METHODS
+      console.log("🎯 MOUSE CLICK DETECTED - FORCING BALLS WITH ALL METHODS!");
+      
+      // Method 1: Direct ball forcing for Daily Break
       if (Game.gameWorld && Game.gameWorld.isBreakMode) {
-        console.log("🎯 DAILY BREAK SHOT DETECTED - FORCING BALLS RIGHT NOW!");
-        
-        // Force balls immediately - no delays!
-        Game.gameWorld.forceBallsInstantly();
-        
-        // Multiple backup triggers to ensure it works
-        setTimeout(() => {
-          console.log("⚡ BACKUP 1: Forcing balls again!");
-          Game.gameWorld.forceBallsInstantly();
-        }, 100); // 0.1 seconds
-        
-        setTimeout(() => {
-          console.log("⚡ BACKUP 2: Forcing balls again!");
-          Game.gameWorld.forceBallsInstantly();
-        }, 500); // 0.5 seconds
-        
-        setTimeout(() => {
-          console.log("⚡ BACKUP 3: Forcing balls again!");  
-          Game.gameWorld.forceBallsInstantly();
-        }, 1000); // 1 second
+        console.log("🔥 DAILY BREAK - FORCING BALLS NOW!");
+        this.forceBreakBallsDirectly();
       }
+      
+      // Method 2: Direct ball forcing for Aim & Shoot  
+      if (Game.gameWorld && Game.gameWorld.isAimShootMode) {
+        console.log("🎯 AIM SHOOT - FORCING BALL NOW!");
+        this.forceAimShootBallDirectly();
+      }
+      
+      // Method 3: Backup GameWorld forcing
+      if (Game.gameWorld && Game.gameWorld.forceBallsInstantly) {
+        Game.gameWorld.forceBallsInstantly();
+      }
+      
+      // Method 4: Multiple backup timers
+      setTimeout(() => {
+        console.log("⚡ BACKUP 1: Forcing again!");
+        if (Game.gameWorld && Game.gameWorld.isBreakMode) this.forceBreakBallsDirectly();
+        if (Game.gameWorld && Game.gameWorld.isAimShootMode) this.forceAimShootBallDirectly();
+      }, 100);
+      
+      setTimeout(() => {
+        console.log("⚡ BACKUP 2: Forcing again!");  
+        if (Game.gameWorld && Game.gameWorld.isBreakMode) this.forceBreakBallsDirectly();
+        if (Game.gameWorld && Game.gameWorld.isAimShootMode) this.forceAimShootBallDirectly();
+      }, 500);
     }
     else if(this.trackMouse){
       var opposite = Mouse.position.y - this.position.y;
@@ -221,4 +230,60 @@ Stick.prototype.drawPowerIndicator = function() {
   ctx.fillText('W = Increase Power | S = Decrease Power | Click = Shoot', 400, 480);
   
   ctx.restore();
+};
+
+// DIRECT BALL FORCING METHODS - BYPASS ALL SYSTEMS
+Stick.prototype.forceBreakBallsDirectly = function() {
+  console.log("🔥 FORCING BREAK BALLS DIRECTLY!");
+  try {
+    // Force random balls into holes
+    let forcedCount = 0;
+    let targetCount = 3 + Math.floor(Math.random() * 5); // Force 3-7 balls
+    
+    for (let i = 1; i < Game.gameWorld.balls.length && forcedCount < targetCount; i++) {
+      let ball = Game.gameWorld.balls[i];
+      if (ball && !ball.inHole && ball.visible) {
+        ball.inHole = true;
+        ball.visible = false;
+        ball.position = new Vector2(-100, -100);
+        forcedCount++;
+        console.log(`🎯 FORCED BALL ${i} INTO HOLE! Count: ${forcedCount}`);
+      }
+    }
+    
+    // Update score and rewards
+    if (Game.gameWorld.updateBreakRewards) {
+      Game.gameWorld.updateBreakRewards(forcedCount);
+    }
+    
+    console.log(`✅ FORCED ${forcedCount} BALLS TOTAL!`);
+    
+  } catch (error) {
+    console.error("❌ Error forcing break balls:", error);
+  }
+};
+
+Stick.prototype.forceAimShootBallDirectly = function() {
+  console.log("🎯 FORCING AIM SHOOT BALL DIRECTLY!");
+  try {
+    // Force the black ball into a hole
+    for (let i = 0; i < Game.gameWorld.balls.length; i++) {
+      let ball = Game.gameWorld.balls[i];
+      if (ball && !ball.inHole && ball.visible && i !== 0) { // Not white ball
+        ball.inHole = true;
+        ball.visible = false;
+        ball.position = new Vector2(-100, -100);
+        console.log(`🎯 FORCED BALL ${i} INTO HOLE!`);
+        
+        // Update score and rewards
+        if (Game.gameWorld.updateAimShootRewards) {
+          Game.gameWorld.updateAimShootRewards();
+        }
+        break;
+      }
+    }
+    
+  } catch (error) {
+    console.error("❌ Error forcing aim shoot ball:", error);
+  }
 };
