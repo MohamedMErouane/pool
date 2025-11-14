@@ -156,8 +156,8 @@ GameWorld.prototype.forceGuaranteedBallsSimple = function() {
     // IMMEDIATE CALLBACK TO HANDLE COMPLETION
     setTimeout(() => {
         if (this.isBreakMode && this.miniGameActive) {
-            console.log("🔄 Triggering break completion with guaranteed results");
-            this.handleBreakComplete();
+            console.log("🔄 Break complete - no complex handling needed");
+            // DISABLED: this.handleBreakComplete();
         }
     }, 500);
 };
@@ -363,7 +363,8 @@ GameWorld.prototype.update = function (delta) {
     if(!this.ballsMoving() && AI.finishedSession){
         // Check if in break mode and shot is complete
         if (this.isBreakMode && this.miniGameActive) {
-            this.handleBreakComplete();
+            console.log("🔄 Break shot complete - balls already forced!");
+            // DISABLED: this.handleBreakComplete();
             return;
         }
         
@@ -726,7 +727,8 @@ GameWorld.prototype.forceBallsInstantly = function() {
     // Complete the break after forcing balls
     setTimeout(() => {
         if (this.isBreakMode) {
-            this.handleBreakComplete();
+            console.log("🔄 Break forcing complete - no complex handling needed");
+            // DISABLED: this.handleBreakComplete();
         }
     }, 1000);
 };
