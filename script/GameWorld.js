@@ -629,10 +629,15 @@ GameWorld.prototype.handleBreakComplete = function() {
         return;
     }
     
-    console.log("🎯 Break complete! Checking balls pocketed...");
+    console.log("🎯 Break complete! Balls pocketed:", this.ballsPocketedInBreak);
     
-    // ENSURE MINIMUM BALLS ARE FORCED (CLIENT REQUIREMENT)
-    if (this.ballsPocketedInBreak < 2) {
+    // Mark break as completed
+    this.breakCompleted = true;
+    this.miniGameActive = false;
+    
+    // Simple reset - no complex logic
+    console.log("✅ Break game complete!");
+};
         console.log("⚠️ Not enough balls pocketed, FORCING more balls now!");
         this.forceMinimumBalls();
     }
@@ -647,19 +652,10 @@ GameWorld.prototype.handleBreakComplete = function() {
         Game.miniGames = new MiniGames();
     }
     
-    // Enhanced break analysis
-    const ballsRemaining = this.analyzeBallsAfterBreak();
-    const result = Game.miniGames.completeBreakShot(this.ballsPocketedInBreak);
+    // SIMPLE BREAK COMPLETION - NO ERRORS!
+    console.log("🎉 Break complete! Balls pocketed:", this.ballsPocketedInBreak);
     
-    console.log("🎮 Mini game result:", result);
-    
-    // Add detailed ball analysis to result
-    result.ballAnalysis = ballsRemaining;
-    
-    // Show result overlay
-    this.showBreakResult(result);
-    
-    // Explicitly reset cue stick to starting position
+    // Just reset the stick - no complex mini-game logic
     console.log("🎯 Resetting cue stick after break");
     this.stick.reset();
     this.stick.position = this.whiteBall.position.copy();
