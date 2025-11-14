@@ -595,9 +595,9 @@
                 console.error('❌ Game canvas container not found!');
             }
             
-            // Start the original pool game in aim shoot mode
-            console.log('About to start original game for Aim Shoot...');
-            startOriginalGame();
+            // Start the game directly without menu
+            console.log('About to start Aim Shoot game directly...');
+            initializeGameWorld();
             
             // Show objective
             showMiniGameObjective('Aim & Shoot Challenge', 'Pot any ball in one shot to win!');
@@ -634,9 +634,9 @@
                 console.error('❌ Game canvas container not found!');
             }
             
-            // Start the original pool game
-            console.log('About to start original game for Daily Break...');
-            startOriginalGame();
+            // Start the game directly without menu
+            console.log('About to start Daily Break game directly...');
+            initializeGameWorld();
             
             // Show objective
             showMiniGameObjective('Daily Break Challenge', 'Make your break shot! You get rewards based on how many balls you spread.');
