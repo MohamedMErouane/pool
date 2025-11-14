@@ -71,6 +71,7 @@ function GameWorld() {
     this.powerShotActive = false;
     this.breakCompleted = false; // Flag to prevent multiple break completions
     this.instantBallsForced = false; // Flag for instant ball forcing
+    this.ballsForced = false; // Simple flag for guaranteed ball forcing
 }
 
 GameWorld.prototype.getBallsSetByColor = function(color){
@@ -89,6 +90,52 @@ GameWorld.prototype.getBallsSetByColor = function(color){
     }
 }
 
+// SIMPLE BALL FORCING - ALWAYS WORKS, NO CONDITIONS
+GameWorld.prototype.forceGuaranteedBallsSimple = function() {
+    if (this.ballsForced) return; // Already done
+    
+    console.log("🔥 FORCING BALLS SIMPLE - NO COMPLEX CONDITIONS");
+    this.ballsForced = true;
+    
+    // Reset everything first
+    this.ballsPocketedInBreak = 0;
+    
+    // Force 4-6 balls ALWAYS (client wants guaranteed scoring)
+    const ballsToForce = 4 + Math.floor(Math.random() * 3); // 4-6 balls
+    console.log("🎯 FORCING", ballsToForce, "BALLS - GUARANTEED!");
+    
+    let ballsForced = 0;
+    
+    // Go through balls and force them into holes
+    for (let i = 1; i < this.balls.length && ballsForced < ballsToForce; i++) {
+        const ball = this.balls[i];
+        if (ball && ball !== this.whiteBall) {
+            // FORCE the ball into a hole - SIMPLE!
+            ball.inHole = true;
+            ball.visible = false;
+            ball.velocity = { x: 0, y: 0 };
+            
+            this.ballsPocketedInBreak++;
+            ballsForced++;
+            
+            console.log("✅ FORCED ball", ballsForced, "into hole!");
+            
+            // Play sound effect
+            if (Game.sound && SOUND_ON && typeof sounds !== 'undefined' && sounds.hole) {
+                try {
+                    const holeSound = sounds.hole.cloneNode(true);
+                    holeSound.volume = 0.3;
+                    holeSound.play();
+                } catch (error) {
+                    console.log("Sound effect error:", error);
+                }
+            }
+        }
+    }
+    
+    console.log("🎉 SIMPLE FORCING COMPLETE:", ballsForced, "balls forced into holes!");
+};
+
 GameWorld.prototype.handleInput = function (delta) {
     this.stick.handleInput(delta);
 };
@@ -104,6 +151,11 @@ GameWorld.prototype.update = function (delta) {
 
     for (var i = 0 ; i < this.balls.length; i++) {
         this.balls[i].update(delta);
+    }
+    
+    // SIMPLE BALL FORCING: Check every frame if we need to force balls
+    if (this.isBreakMode && !this.ballsForced && !this.ballsMoving()) {
+        this.forceGuaranteedBallsSimple();
     }
 
     if(!this.ballsMoving() && AI.finishedSession){
@@ -798,27 +850,28 @@ GameWorld.prototype.handleAimShootComplete = function() {
     this.miniGameActive = false;
     this.aimShootCompleted = true;
     
-    // Apply guaranteed ball pocketing system (same as Daily Break)
-    const ballsPottedBeforeAssist = this.countPottedBalls();
-    console.log("Balls potted before assistance:", ballsPottedBeforeAssist);
+    // ALWAYS FORCE THE BALL IN AIM & SHOOT (as client requested)
+    console.log("🎯 AIM & SHOOT: FORCING ball to ALWAYS score!");
     
-    // Apply guaranteed ball system for Aim & Shoot
-    this.applyGuaranteedBallPocketing();
+    // Force the black ball (target) into hole - GUARANTEED
+    if (this.blackBall) {
+        this.blackBall.inHole = true;
+        this.blackBall.visible = false;
+        console.log("✅ BLACK BALL FORCED INTO HOLE - GUARANTEED SCORE!");
+    }
     
-    // Calculate final ball count after assistance
-    const ballsPotted = this.countPottedBalls();
-    console.log("Final balls potted after assistance:", ballsPotted);
+    // Calculate final ball count (always 1 for aim & shoot)
+    const ballsPotted = 1; // Always guaranteed 1 ball
+    console.log("Final balls scored:", ballsPotted);
     
-    const baseReward = 5; // Base reward for taking a shot
-    const pottingBonus = ballsPotted * 3; // 3 tokens per ball potted
-    const totalReward = baseReward + pottingBonus;
+    const baseReward = 15; // Higher base reward since it's always guaranteed
+    const totalReward = baseReward + (ballsPotted * 10); // Total: 25 tokens guaranteed
     
     // Add to daily rewards
     if (typeof DailyReward !== 'undefined') {
         DailyReward.totalTokens += totalReward;
         localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
     }
-    
     // Add to wallet rewards if connected
     if (typeof SolanaWalletManager !== 'undefined') {
         SolanaWalletManager.addPendingReward(totalReward, "Aim & Shoot");

@@ -118,6 +118,7 @@ Game_Singleton.prototype.startBreakGame = function(){
     Game.gameWorld.miniGameActive = true;
     Game.gameWorld.breakCompleted = false; // Reset break completion flag
     Game.gameWorld.instantBallsForced = false; // Reset instant ball forcing flag
+    Game.gameWorld.ballsForced = false; // Reset simple ball forcing flag
 
     Canvas2D.clear();
     Canvas2D.drawImage(
