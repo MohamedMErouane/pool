@@ -108,21 +108,6 @@ Game_Singleton.prototype.startNewGame = function(){
 Game_Singleton.prototype.startBreakGame = function(){
     Canvas2D._canvas.style.cursor = "auto";
 
-    // CLIENT SPECIFICATION: Check if player has attempts left
-    const today = new Date().toDateString();
-    const lastPlayDate = localStorage.getItem('lastPlayDate') || '';
-    const dailyBreakAttempts = parseInt(localStorage.getItem('dailyBreakAttempts') || '0');
-    
-    // Reset attempts if it's a new day
-    if (lastPlayDate !== today) {
-        localStorage.setItem('dailyBreakAttempts', '0');
-        localStorage.setItem('lastPlayDate', today);
-    } else if (dailyBreakAttempts >= 3) {
-        // Show 24-hour message if player has used all attempts
-        this.show24HourMessage('Daily Break');
-        return;
-    }
-
     // Ensure sound is enabled for break mode
     Game.sound = true;
     console.log("🔊 Sound enabled for Daily Break mode");
@@ -130,16 +115,12 @@ Game_Singleton.prototype.startBreakGame = function(){
     Game.gameWorld = new GameWorld();
     Game.policy = new GamePolicy();
     
-    // CLIENT SPECIFICATION: Initialize break mode
+    // SIMPLE MODE SETUP
     Game.gameWorld.isBreakMode = true;
     Game.gameWorld.miniGameActive = true;
-    Game.gameWorld.breakCompleted = false;
-    Game.gameWorld.instantBallsForced = false;
-    Game.gameWorld.ballsForced = false;
-    Game.gameWorld.aimShootTargetForced = false;
+    Game.gameWorld.isAimShootMode = false; // Make sure it's not aim shoot
     
-    console.log(`🎯 DAILY BREAK STARTED - Attempt ${dailyBreakAttempts + 1} of 3`);
-    console.log("📋 CLIENT SPEC: Ball will slowly roll into hole, show points, auto-reset");
+    console.log("🎯 DAILY BREAK MODE ACTIVATED - isBreakMode = true");
 
     Canvas2D.clear();
     Canvas2D.drawImage(
@@ -158,21 +139,6 @@ Game_Singleton.prototype.startBreakGame = function(){
 Game_Singleton.prototype.startAimShootGame = function(){
     Canvas2D._canvas.style.cursor = "auto";
 
-    // CLIENT SPECIFICATION: Check if player has attempts left
-    const today = new Date().toDateString();
-    const lastPlayDate = localStorage.getItem('lastPlayDate') || '';
-    const aimShootAttempts = parseInt(localStorage.getItem('aimShootAttempts') || '0');
-    
-    // Reset attempts if it's a new day
-    if (lastPlayDate !== today) {
-        localStorage.setItem('aimShootAttempts', '0');
-        localStorage.setItem('lastPlayDate', today);
-    } else if (aimShootAttempts >= 3) {
-        // Show 24-hour message if player has used all attempts
-        this.show24HourMessage('Aim Shot');
-        return;
-    }
-
     // Ensure sound is enabled for aim shoot mode
     Game.sound = true;
     console.log("🎯 Sound enabled for Aim & Shoot mode");
@@ -181,14 +147,12 @@ Game_Singleton.prototype.startAimShootGame = function(){
     Game.gameWorld = new AimShootMode();
     Game.policy = new GamePolicy();
     
-    // CLIENT SPECIFICATION: Initialize aim shoot mode
+    // SIMPLE MODE SETUP
     Game.gameWorld.isAimShootMode = true;
     Game.gameWorld.miniGameActive = true;
-    Game.gameWorld.aimShootCompleted = false;
-    Game.gameWorld.aimShootTargetForced = false;
+    Game.gameWorld.isBreakMode = false; // Make sure it's not break mode
     
-    console.log(`🎯 AIM SHOOT STARTED - Attempt ${aimShootAttempts + 1} of 3`);
-    console.log("📋 CLIENT SPEC: Ball must ALWAYS go into hole, show points, auto-reset");
+    console.log("🎯 AIM SHOOT MODE ACTIVATED - isAimShootMode = true");
 
     Canvas2D.clear();
     Canvas2D.drawImage(
@@ -203,44 +167,6 @@ Game_Singleton.prototype.startAimShootGame = function(){
         Game.mainLoop();
     },1000);
 }
-
-// Show 24-hour wait message
-Game_Singleton.prototype.show24HourMessage = function(mode) {
-    console.log(`⏰ Showing 24-hour message for ${mode}`);
-    
-    const overlay = document.createElement('div');
-    overlay.style.position = 'fixed';
-    overlay.style.top = '50%';
-    overlay.style.left = '50%';
-    overlay.style.transform = 'translate(-50%, -50%)';
-    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
-    overlay.style.color = 'white';
-    overlay.style.padding = '50px';
-    overlay.style.borderRadius = '15px';
-    overlay.style.textAlign = 'center';
-    overlay.style.fontSize = '20px';
-    overlay.style.fontWeight = 'bold';
-    overlay.style.zIndex = '10000';
-    overlay.style.border = '3px solid #FF4444';
-    
-    const message = mode === 'Aim Shot' ? 
-        'You have completed 3 shots. Please come back in 24 hours to play again.' :
-        'The game will be available again after 24 hours, and the player cannot play until then.';
-    
-    overlay.innerHTML = `
-        <div style="margin-bottom: 25px; font-size: 26px; color: #FF6666;">3 Attempts Completed!</div>
-        <div style="margin-bottom: 20px; line-height: 1.5;">${message}</div>
-        <div style="font-size: 16px; color: #CCCCCC;">Come back tomorrow for more attempts!</div>
-        <div style="margin-top: 25px;">
-            <button onclick="this.parentElement.parentElement.remove();" 
-                    style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
-                OK
-            </button>
-        </div>
-    `;
-    
-    document.body.appendChild(overlay);
-};
 
 Game_Singleton.prototype.continueGame = function(){
     Canvas2D._canvas.style.cursor = "auto";

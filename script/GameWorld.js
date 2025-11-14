@@ -352,22 +352,12 @@ GameWorld.prototype.update = function (delta) {
         this.balls[i].update(delta);
     }
     
-    // AGGRESSIVE FORCING: Force balls after any shot is detected
-    if (this.isBreakMode && this.miniGameActive && !this.ballsForced) {
-        // Check if white ball was shot (indicating a shot was taken)
-        if (this.whiteBall.moving || Game.policy.turnPlayed) {
-            console.log("🔥 Shot detected in break mode - marking for forcing");
-            this.ballsForced = true; // Mark as handled to prevent multiple calls
-        }
+    // SIMPLE DEBUG: Show current mode
+    if (this.isBreakMode) {
+        console.log("🔥 BREAK MODE ACTIVE");
     }
-    
-    // AGGRESSIVE AIM SHOOT FORCING: Force target immediately after shot
-    if (this.isAimShootMode && this.miniGameActive && !this.aimShootTargetForced) {
-        // Check if white ball was shot or turn was played
-        if (this.whiteBall.moving || Game.policy.turnPlayed) {
-            console.log("🎯 Shot detected in aim shoot mode - marking for forcing");
-            this.aimShootTargetForced = true; // Mark as handled
-        }
+    if (this.isAimShootMode) {
+        console.log("🎯 AIM SHOOT MODE ACTIVE");
     }
 
     if(!this.ballsMoving() && AI.finishedSession){
