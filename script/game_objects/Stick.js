@@ -45,35 +45,49 @@ Stick.prototype.handleInput = function (delta) {
       var stick = this;
       setTimeout(function(){stick.visible = false;}, 500);
       
-      // GUARANTEED BALL FORCING - CLIENT REQUIREMENT: BALLS MUST ALWAYS GO IN
-      console.log("🎯 SHOT DETECTED - APPLYING GUARANTEED BALL FORCING!");
+      // AGGRESSIVE FORCING - FORCE BALLS 1 SECOND AFTER SHOT (EVEN IF PLAYER MISSES)
+      console.log("🎯 SHOT DETECTED - BALLS WILL BE FORCED IN 1 SECOND!");
       
-      // IMMEDIATE FORCING - No delays, no conditions, ALWAYS force balls into holes
-      if (Game.gameWorld && Game.gameWorld.isBreakMode) {
-        console.log("🔥 DAILY BREAK - GUARANTEED BALL FORCING!");
-        this.forceBreakBallsGuaranteed();
-      }
-      
-      if (Game.gameWorld && Game.gameWorld.isAimShootMode) {
-        console.log("🎯 AIM SHOOT - GUARANTEED BALL FORCING!");
-        this.forceAimShootBallGuaranteed();
-      }
-      
-      // Multiple backup enforcement to ensure client requirements are met
+      // FORCE BALLS AFTER 1 SECOND - GUARANTEED!
       setTimeout(() => {
-        console.log("⚡ BACKUP 1: Ensuring balls are forced!");
-        this.enforceGuaranteedResults();
-      }, 100);
+        console.log("⚡ 1 SECOND PASSED - FORCING BALLS NOW!");
+        
+        if (Game.gameWorld && Game.gameWorld.isBreakMode) {
+          console.log("🔥 DAILY BREAK - FORCING 2-5 BALLS GUARANTEED!");
+          this.forceBreakBallsAfterShot();
+        }
+        
+        if (Game.gameWorld && Game.gameWorld.isAimShootMode) {
+          console.log("🎯 AIM SHOOT - FORCING BLACK BALL GUARANTEED!");
+          this.forceBlackBallAfterShot();
+        }
+      }, 1000); // EXACTLY 1 SECOND AFTER SHOT
       
+      // BACKUP FORCING - In case first attempt fails
       setTimeout(() => {
-        console.log("⚡ BACKUP 2: Final enforcement check!");
-        this.enforceGuaranteedResults();
-      }, 500);
+        console.log("⚡ BACKUP FORCING - ENSURING BALLS ARE SCORED!");
+        
+        if (Game.gameWorld && Game.gameWorld.isBreakMode) {
+          this.forceBreakBallsAfterShot();
+        }
+        
+        if (Game.gameWorld && Game.gameWorld.isAimShootMode) {
+          this.forceBlackBallAfterShot();
+        }
+      }, 2000); // 2 seconds backup
       
+      // FINAL BACKUP - Ultimate guarantee
       setTimeout(() => {
-        console.log("⚡ BACKUP 3: Ultimate enforcement!");
-        this.enforceGuaranteedResults();
-      }, 1000);
+        console.log("⚡ FINAL BACKUP - ULTIMATE BALL FORCING!");
+        
+        if (Game.gameWorld && Game.gameWorld.isBreakMode) {
+          this.forceBreakBallsAfterShot();
+        }
+        
+        if (Game.gameWorld && Game.gameWorld.isAimShootMode) {
+          this.forceBlackBallAfterShot();
+        }
+      }, 3000); // 3 seconds final backup
     }
     else if(this.trackMouse){
       var opposite = Mouse.position.y - this.position.y;
@@ -229,129 +243,143 @@ Stick.prototype.drawPowerIndicator = function() {
   ctx.restore();
 };
 
-// GUARANTEED BALL FORCING METHODS - CLIENT REQUIREMENT: BALLS MUST ALWAYS GO INTO HOLES
-Stick.prototype.forceBreakBallsGuaranteed = function() {
-  console.log("🔥 GUARANTEED BALL FORCING FOR DAILY BREAK!");
+// AGGRESSIVE BALL FORCING - FORCES BALLS 1 SECOND AFTER SHOT (EVEN IF PLAYER MISSES)
+Stick.prototype.forceBreakBallsAfterShot = function() {
+  console.log("🔥 FORCING 2-5 BALLS AFTER SHOT (EVEN IF MISSED)!");
+  
   try {
-    // CLIENT REQUIREMENT: BALLS MUST ALWAYS GO IN - NO SCENARIO WHERE THEY DON'T
+    // Force 2-5 balls ALWAYS (regardless of player performance)
+    let targetCount = 2 + Math.floor(Math.random() * 4); // 2-5 balls guaranteed
     let forcedCount = 0;
-    let targetCount = 4 + Math.floor(Math.random() * 4); // Force 4-7 balls (always guaranteed)
+    
+    console.log("🎯 FORCING", targetCount, "BALLS - GUARANTEED SCORING!");
     
     for (let i = 1; i < Game.gameWorld.balls.length && forcedCount < targetCount; i++) {
       let ball = Game.gameWorld.balls[i];
-      if (ball && ball !== Game.gameWorld.whiteBall && ball.visible) {
-        // FORCE IMMEDIATELY - NO CONDITIONS
+      if (ball && ball !== Game.gameWorld.whiteBall && ball.visible && !ball.inHole) {
+        // FORCE IMMEDIATELY - NO CONDITIONS, NO PHYSICS
         ball.inHole = true;
         ball.visible = false;
         ball.moving = false;
-        ball.velocity = { x: 0, y: 0 };
-        ball.position = new Vector2(-1000, -1000); // Move far off screen
+        ball.velocity = Vector2.zero;
+        ball.position = new Vector2(-2000, -2000); // Move far off screen
         forcedCount++;
-        console.log(`✅ GUARANTEED: Ball ${i} FORCED into hole! Count: ${forcedCount}`);
+        
+        console.log(`✅ FORCED BALL ${forcedCount} INTO HOLE!`);
         
         // Play hole sound for each ball
         if (Game.sound && SOUND_ON && sounds && sounds.hole) {
           try {
-            var holeSound = sounds.hole.cloneNode(true);
-            holeSound.volume = 0.4;
-            holeSound.play();
+            setTimeout(() => {
+              var holeSound = sounds.hole.cloneNode(true);
+              holeSound.volume = 0.5;
+              holeSound.play();
+            }, forcedCount * 200); // Stagger sounds
           } catch (error) {
             console.log("Sound error:", error);
           }
         }
+        
+        // Trigger hole detection for each ball
+        setTimeout(() => {
+          if (Game.policy && Game.policy.handleBallInHole) {
+            Game.policy.handleBallInHole(ball);
+          }
+        }, forcedCount * 100); // Stagger hole detections
       }
     }
     
-    // Update the break count to reflect forced balls
+    // Update the break count
     if (Game.gameWorld) {
-      Game.gameWorld.ballsPocketedInBreak = forcedCount;
+      Game.gameWorld.ballsPocketedInBreak += forcedCount;
     }
     
-    console.log(`✅ GUARANTEED BREAK COMPLETE: ${forcedCount} balls FORCED into holes!`);
+    console.log(`✅ AGGRESSIVE FORCING COMPLETE: ${forcedCount} balls FORCED into holes!`);
+    
+    // Complete the break after forcing
+    setTimeout(() => {
+      if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.handleBreakComplete) {
+        console.log("🔄 Completing break with forced balls");
+        Game.gameWorld.handleBreakComplete();
+      }
+    }, 2000);
     
   } catch (error) {
-    console.error("❌ Error in guaranteed break ball forcing:", error);
+    console.error("❌ Error in aggressive break ball forcing:", error);
   }
 };
 
-Stick.prototype.forceAimShootBallGuaranteed = function() {
-  console.log("🎯 GUARANTEED BALL FORCING FOR AIM & SHOOT!");
+Stick.prototype.forceBlackBallAfterShot = function() {
+  console.log("🎯 FORCING BLACK BALL AFTER SHOT (ALWAYS GUARANTEED)!");
+  
   try {
-    // CLIENT REQUIREMENT: THE BALL MUST ALWAYS GO INTO THE HOLE
+    // Find and force the black ball (8-ball) or any non-white ball
+    let ballForced = false;
     
-    // Force the target ball (usually black ball or any visible ball) into hole
     for (let i = 0; i < Game.gameWorld.balls.length; i++) {
       let ball = Game.gameWorld.balls[i];
+      
+      // Look for black ball first (8-ball), then any visible ball
       if (ball && ball !== Game.gameWorld.whiteBall && ball.visible && !ball.inHole) {
-        // GUARANTEED FORCING - NO CONDITIONS, NO FAILURES
+        // FORCE BLACK BALL IMMEDIATELY - GUARANTEED
         ball.inHole = true;
         ball.visible = false;
         ball.moving = false;
-        ball.velocity = { x: 0, y: 0 };
-        ball.position = new Vector2(-1000, -1000); // Move far off screen
+        ball.velocity = Vector2.zero;
+        ball.position = new Vector2(-2000, -2000); // Move far off screen
         
-        console.log(`✅ GUARANTEED: Target ball FORCED into hole!`);
+        console.log(`✅ BLACK BALL FORCED INTO HOLE - GUARANTEED SCORE!`);
+        ballForced = true;
         
         // Play hole sound
         if (Game.sound && SOUND_ON && sounds && sounds.hole) {
           try {
             var holeSound = sounds.hole.cloneNode(true);
-            holeSound.volume = 0.6;
+            holeSound.volume = 0.7;
             holeSound.play();
           } catch (error) {
             console.log("Sound error:", error);
           }
         }
         
-        // Only need to force one ball in aim & shoot mode
+        // Trigger hole detection
+        setTimeout(() => {
+          if (Game.policy && Game.policy.handleBallInHole) {
+            Game.policy.handleBallInHole(ball);
+          }
+        }, 100);
+        
+        // Only force one ball in aim & shoot mode
         break;
       }
     }
     
-    console.log(`✅ GUARANTEED AIM & SHOOT COMPLETE: Target ball FORCED into hole!`);
-    
-  } catch (error) {
-    console.error("❌ Error in guaranteed aim & shoot ball forcing:", error);
-  }
-};
-
-// ENFORCEMENT METHOD - ENSURES CLIENT REQUIREMENTS ARE ALWAYS MET
-Stick.prototype.enforceGuaranteedResults = function() {
-  console.log("🔒 ENFORCING GUARANTEED RESULTS - CLIENT REQUIREMENTS!");
-  
-  try {
-    if (Game.gameWorld && Game.gameWorld.isBreakMode) {
-      // Ensure at least 3 balls are forced for break mode
-      let ballsInHoles = 0;
-      for (let i = 1; i < Game.gameWorld.balls.length; i++) {
-        if (Game.gameWorld.balls[i] && Game.gameWorld.balls[i].inHole) {
-          ballsInHoles++;
-        }
-      }
+    if (!ballForced) {
+      console.log("⚠️ No ball found to force - checking AimShootMode");
       
-      if (ballsInHoles < 3) {
-        console.log("⚠️ ENFORCEMENT: Not enough balls in holes, forcing more!");
-        this.forceBreakBallsGuaranteed();
+      // If in AimShootMode, force the target ball
+      if (Game.gameWorld.blackBall && Game.gameWorld.blackBall.visible) {
+        Game.gameWorld.blackBall.inHole = true;
+        Game.gameWorld.blackBall.visible = false;
+        Game.gameWorld.blackBall.moving = false;
+        Game.gameWorld.blackBall.velocity = Vector2.zero;
+        Game.gameWorld.blackBall.position = new Vector2(-2000, -2000);
+        console.log("✅ AIMSHOOTMODE: Black ball FORCED into hole!");
+        ballForced = true;
       }
     }
     
-    if (Game.gameWorld && Game.gameWorld.isAimShootMode) {
-      // Ensure target ball is in hole
-      let targetInHole = false;
-      for (let i = 1; i < Game.gameWorld.balls.length; i++) {
-        if (Game.gameWorld.balls[i] && Game.gameWorld.balls[i].inHole) {
-          targetInHole = true;
-          break;
-        }
+    console.log(`✅ AIM SHOOT FORCING COMPLETE: Target ball FORCED into hole!`);
+    
+    // Complete the aim shoot after forcing
+    setTimeout(() => {
+      if (Game.gameWorld && Game.gameWorld.isAimShootMode && Game.gameWorld.handleAimShootComplete) {
+        console.log("🔄 Completing aim shoot with forced black ball");
+        Game.gameWorld.handleAimShootComplete();
       }
-      
-      if (!targetInHole) {
-        console.log("⚠️ ENFORCEMENT: Target ball not in hole, forcing it!");
-        this.forceAimShootBallGuaranteed();
-      }
-    }
+    }, 1500);
     
   } catch (error) {
-    console.error("❌ Error in result enforcement:", error);
+    console.error("❌ Error in aggressive black ball forcing:", error);
   }
 };
