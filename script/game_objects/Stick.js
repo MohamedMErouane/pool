@@ -45,25 +45,28 @@ Stick.prototype.handleInput = function (delta) {
       var stick = this;
       setTimeout(function(){stick.visible = false;}, 500);
       
-      // IMMEDIATE GUARANTEED BALLS: Force balls right after ANY shot (slow, fast, or miss)
-      if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive) {
-        console.log("🎯 SHOT DETECTED - Forcing guaranteed balls IMMEDIATELY!");
+      // INSTANT BALL FORCING: Force balls immediately when shot is detected
+      if (Game.gameWorld && Game.gameWorld.isBreakMode) {
+        console.log("🎯 DAILY BREAK SHOT DETECTED - FORCING BALLS RIGHT NOW!");
         
-        // Immediate trigger (500ms)
-        setTimeout(() => {
-          if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive) {
-            console.log("⚡ FORCING BALLS NOW!");
-            Game.gameWorld.handleBreakComplete();
-          }
-        }, 500); // 0.5 seconds - much faster!
+        // Force balls immediately - no delays!
+        Game.gameWorld.forceBallsInstantly();
         
-        // Backup trigger in case first one fails
+        // Multiple backup triggers to ensure it works
         setTimeout(() => {
-          if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive) {
-            console.log("🔄 BACKUP: Forcing balls again!");
-            Game.gameWorld.handleBreakComplete();
-          }
-        }, 1500); // 1.5 seconds backup
+          console.log("⚡ BACKUP 1: Forcing balls again!");
+          Game.gameWorld.forceBallsInstantly();
+        }, 100); // 0.1 seconds
+        
+        setTimeout(() => {
+          console.log("⚡ BACKUP 2: Forcing balls again!");
+          Game.gameWorld.forceBallsInstantly();
+        }, 500); // 0.5 seconds
+        
+        setTimeout(() => {
+          console.log("⚡ BACKUP 3: Forcing balls again!");  
+          Game.gameWorld.forceBallsInstantly();
+        }, 1000); // 1 second
       }
     }
     else if(this.trackMouse){

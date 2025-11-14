@@ -70,6 +70,7 @@ function GameWorld() {
     this.aimShootCompleted = false;
     this.powerShotActive = false;
     this.breakCompleted = false; // Flag to prevent multiple break completions
+    this.instantBallsForced = false; // Flag for instant ball forcing
 }
 
 GameWorld.prototype.getBallsSetByColor = function(color){
@@ -413,6 +414,62 @@ GameWorld.prototype.handleBreakComplete = function() {
     GAME_STOPPED = true;
     
     console.log("🔄 Immediately returned to initial screen");
+};
+
+// INSTANT BALL FORCING - No delays, no complex conditions
+GameWorld.prototype.forceBallsInstantly = function() {
+    console.log("🚀 INSTANT BALL FORCING TRIGGERED!");
+    
+    // Simple check - only force if in break mode
+    if (!this.isBreakMode) {
+        console.log("❌ Not in break mode, skipping");
+        return;
+    }
+    
+    // Prevent multiple calls in same session
+    if (this.instantBallsForced) {
+        console.log("✅ Balls already forced in this session");
+        return;
+    }
+    
+    // Mark as forced to prevent duplicates
+    this.instantBallsForced = true;
+    
+    // Get guaranteed ball count (minimum 3)
+    const guaranteedBalls = 3 + Math.floor(Math.random() * 3); // 3-6 balls
+    console.log("🎯 FORCING", guaranteedBalls, "BALLS INSTANTLY!");
+    
+    // Reset any existing balls first
+    this.ballsPocketedInBreak = 0;
+    
+    // Find available balls to force into pockets
+    const availableBalls = [];
+    for (let i = 1; i < this.balls.length; i++) { // Skip cue ball
+        const ball = this.balls[i];
+        if (ball && ball !== this.whiteBall && ball.visible) {
+            ball.inHole = false; // Reset state
+            ball.visible = true;
+            availableBalls.push(ball);
+        }
+    }
+    
+    // Force the guaranteed number of balls
+    for (let i = 0; i < Math.min(guaranteedBalls, availableBalls.length); i++) {
+        const ball = availableBalls[i];
+        ball.inHole = true;
+        ball.visible = false;
+        this.ballsPocketedInBreak++;
+        console.log("⚡ FORCED ball", i+1, "into pocket!");
+    }
+    
+    console.log("✅ INSTANT FORCING COMPLETE:", this.ballsPocketedInBreak, "balls forced!");
+    
+    // Complete the break after forcing balls
+    setTimeout(() => {
+        if (this.isBreakMode) {
+            this.handleBreakComplete();
+        }
+    }, 1000);
 };
 
 // Guaranteed Ball Pocketing System
