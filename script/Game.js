@@ -114,11 +114,17 @@ Game_Singleton.prototype.startBreakGame = function(){
 
     Game.gameWorld = new GameWorld();
     Game.policy = new GamePolicy();
+    
+    // CLIENT REQUIREMENT: Initialize guaranteed ball system for break mode
     Game.gameWorld.isBreakMode = true; // Mark as break mode
     Game.gameWorld.miniGameActive = true;
     Game.gameWorld.breakCompleted = false; // Reset break completion flag
     Game.gameWorld.instantBallsForced = false; // Reset instant ball forcing flag
     Game.gameWorld.ballsForced = false; // Reset simple ball forcing flag
+    Game.gameWorld.aimShootTargetForced = false; // Reset aim shoot flag
+    
+    console.log("🎯 DAILY BREAK INITIALIZED - GUARANTEED BALL SYSTEM ACTIVE");
+    console.log("📋 CLIENT REQUIREMENT: Balls MUST always go into holes according to predefined scenarios");
 
     Canvas2D.clear();
     Canvas2D.drawImage(
@@ -132,13 +138,19 @@ Game_Singleton.prototype.startBreakGame = function(){
     setTimeout(()=>{
         Game.mainLoop();
         
-        // BACKUP TIMER: Force guaranteed balls after 10 seconds if player doesn't shoot
+        // BACKUP ENFORCEMENT: Ensure balls are forced even if player doesn't shoot
         setTimeout(() => {
             if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive) {
-                console.log("⏰ Backup timer: Forcing guaranteed balls even if no shot was made");
-                Game.gameWorld.handleBreakComplete();
+                console.log("⏰ BACKUP ENFORCEMENT: Forcing guaranteed balls (client requirement)");
+                if (!Game.gameWorld.ballsForced) {
+                    Game.gameWorld.forceGuaranteedBallsSimple();
+                }
+                // Complete the break after backup forcing
+                setTimeout(() => {
+                    Game.gameWorld.handleBreakComplete();
+                }, 2000);
             }
-        }, 10000); // 10 seconds backup timer
+        }, 8000); // 8 seconds backup timer
     },3000);
 }
 
@@ -152,8 +164,15 @@ Game_Singleton.prototype.startAimShootGame = function(){
     // Initialize Aim & Shoot mode with only white and black ball
     Game.gameWorld = new AimShootMode();
     Game.policy = new GamePolicy();
+    
+    // CLIENT REQUIREMENT: Initialize guaranteed target system for aim & shoot mode
     Game.gameWorld.isAimShootMode = true; // Mark as aim shoot mode
     Game.gameWorld.miniGameActive = true;
+    Game.gameWorld.aimShootCompleted = false;
+    Game.gameWorld.aimShootTargetForced = false; // Initialize target forcing flag
+    
+    console.log("🎯 AIM & SHOOT INITIALIZED - GUARANTEED TARGET SYSTEM ACTIVE");
+    console.log("📋 CLIENT REQUIREMENT: Ball MUST always go into hole, only rewards vary");
 
     Canvas2D.clear();
     Canvas2D.drawImage(
@@ -166,6 +185,16 @@ Game_Singleton.prototype.startAimShootGame = function(){
 
     setTimeout(()=>{
         Game.mainLoop();
+        
+        // BACKUP ENFORCEMENT: Ensure target ball is forced even if player doesn't shoot
+        setTimeout(() => {
+            if (Game.gameWorld && Game.gameWorld.isAimShootMode && Game.gameWorld.miniGameActive) {
+                console.log("⏰ BACKUP ENFORCEMENT: Forcing target ball (client requirement)");
+                if (!Game.gameWorld.aimShootTargetForced) {
+                    Game.gameWorld.forceAimShootTargetBall();
+                }
+            }
+        }, 6000); // 6 seconds backup timer
     },1000); // Shorter delay for aim shoot mode
 }
 

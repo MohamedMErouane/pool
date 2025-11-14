@@ -66,7 +66,58 @@ Ball.prototype.update = function(delta){
 	if(this.moving && Math.abs(this.velocity.x) < 1 && Math.abs(this.velocity.y) < 1){
         this.stop();
     }
+    
+    // CLIENT REQUIREMENT ENFORCEMENT: Check if ball should be forced into hole
+    if (!this.inHole && this.shouldBeForced()) {
+        this.forceIntoHole();
+    }
 }
+
+// CLIENT REQUIREMENT: Method to force ball into hole (guaranteed scoring)
+Ball.prototype.forceIntoHole = function() {
+    console.log("🎯 FORCING ball into hole - CLIENT REQUIREMENT");
+    
+    this.inHole = true;
+    this.visible = false;
+    this.moving = false;
+    this.velocity = Vector2.zero;
+    this.position = new Vector2(-1000, -1000); // Move completely off screen
+    
+    // Play hole sound effect
+    if(Game.sound && SOUND_ON && sounds && sounds.hole){
+        try {
+            var holeSound = sounds.hole.cloneNode(true);
+            holeSound.volume = 0.6;
+            holeSound.play();
+        } catch(error) {
+            console.log("Sound system error:", error);
+        }
+    }
+    
+    // Trigger hole detection
+    Game.policy.handleBallInHole(this);
+    console.log("✅ Ball FORCED into hole successfully - CLIENT REQUIREMENT MET");
+};
+
+// Helper method to check if ball should be forced (based on game mode)
+Ball.prototype.shouldBeForced = function() {
+    if (!Game.gameWorld) return false;
+    
+    // Don't force white ball (cue ball)
+    if (this === Game.gameWorld.whiteBall) return false;
+    
+    // Check break mode forcing conditions
+    if (Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive && Game.gameWorld.ballsForced) {
+        return false; // Already handled by GameWorld forcing
+    }
+    
+    // Check aim shoot mode forcing conditions  
+    if (Game.gameWorld.isAimShootMode && Game.gameWorld.miniGameActive && Game.gameWorld.aimShootTargetForced) {
+        return false; // Already handled by GameWorld forcing
+    }
+    
+    return false; // Default: don't force (let GameWorld handle it)
+};
 
 Ball.prototype.updatePosition = function(delta){
 
