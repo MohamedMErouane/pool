@@ -410,49 +410,93 @@ GameWorld.prototype.handleBreakComplete = function() {
 GameWorld.prototype.applyGuaranteedBallPocketing = function() {
     if (!this.isBreakMode || !this.miniGameActive) return 0;
     
-    // Calculate how many balls should be guaranteed based on attempt number
-    const attempt = Game.miniGames ? Game.miniGames.dailyBreakAttempts : 1;
-    let guaranteedBalls = this.calculateGuaranteedBalls(attempt);
+    // FORCED SCORING SYSTEM: ALWAYS force 2-5 balls regardless of player performance
+    const guaranteedBalls = this.getGuaranteedBallCount();
+    console.log("🎯 FORCING", guaranteedBalls, "balls to be scored (regardless of player performance)");
     
-    // If we already have enough balls pocketed naturally, don't add more
-    if (this.ballsPocketedInBreak >= guaranteedBalls) {
-        return 0;
-    }
+    // Count current naturally pocketed balls
+    const currentPocketed = this.ballsPocketedInBreak;
+    console.log("Player naturally scored:", currentPocketed, "balls");
     
-    const ballsToAdd = guaranteedBalls - this.ballsPocketedInBreak;
-    console.log("🎯 Adding", ballsToAdd, "guaranteed balls to break result");
+    // ALWAYS OVERRIDE: Force the guaranteed number of balls regardless of natural performance
+    // First, reset any naturally pocketed balls back to the table
+    this.resetAllBallsToTable();
     
-    // Find balls that are not in holes and make some of them "pocketed"
+    // Then force the exact guaranteed number of balls to be pocketed
+    const ballsToForce = guaranteedBalls;
+    console.log("🎯 FORCING", ballsToForce, "balls to be pocketed automatically");
+    
+    // Find all available balls (not cue ball) and force the guaranteed amount
     const availableBalls = [];
     for (let i = 1; i < this.balls.length; i++) { // Skip cue ball (index 0)
         const ball = this.balls[i];
-        if (ball.visible && !ball.inHole) {
+        if (ball.visible && !ball.inHole && ball !== this.whiteBall) {
             availableBalls.push(ball);
         }
     }
     
-    // Randomly select balls to be "pocketed"
-    const ballsToPocket = Math.min(ballsToAdd, availableBalls.length);
+    // Force the guaranteed number of balls to be pocketed
+    const ballsToPocket = Math.min(ballsToForce, availableBalls.length);
     for (let i = 0; i < ballsToPocket; i++) {
         const randomIndex = Math.floor(Math.random() * availableBalls.length);
         const ballToPocket = availableBalls.splice(randomIndex, 1)[0];
         
-        // Make the ball appear to have been pocketed
+        // Force the ball into a pocket
         this.forceBallIntoPocket(ballToPocket);
+        console.log("✅ Forced ball", ballToPocket.color || ballToPocket.number, "into pocket");
     }
+    
+    // Update the break counter to match forced balls
+    this.ballsPocketedInBreak = ballsToPocket;
     
     return ballsToPocket;
 };
 
-GameWorld.prototype.calculateGuaranteedBalls = function(attemptNumber) {
-    // Progressive system: more balls guaranteed on later attempts
-    const guaranteedByAttempt = {
-        1: Math.floor(Math.random() * 3) + 1, // 1-3 balls on first attempt
-        2: Math.floor(Math.random() * 4) + 2, // 2-5 balls on second attempt  
-        3: Math.floor(Math.random() * 5) + 3  // 3-7 balls on final attempt
-    };
+GameWorld.prototype.getGuaranteedBallCount = function() {
+    // MINIMUM 3 BALLS GUARANTEED: Each shot guarantees AT LEAST 3 balls
+    // 40% chance for 3 balls (minimum)
+    // 30% chance for 4 balls (good)  
+    // 20% chance for 5 balls (excellent)
+    // 10% chance for 6+ balls (amazing)
     
-    return guaranteedByAttempt[attemptNumber] || 2; // Default to 2 balls
+    const random = Math.random();
+    
+    if (random < 0.40) {
+        return 3; // 40% chance - 3 balls (MINIMUM guaranteed)
+    } else if (random < 0.70) {
+        return 4; // 30% chance - 4 balls (good reward)
+    } else if (random < 0.90) {
+        return 5; // 20% chance - 5 balls (excellent reward)
+    } else {
+        return 6; // 10% chance - 6 balls (amazing reward)
+    }
+};
+
+GameWorld.prototype.calculateGuaranteedBalls = function(attemptNumber) {
+    // Legacy function - replaced by getGuaranteedBallCount()
+    return this.getGuaranteedBallCount();
+};
+
+GameWorld.prototype.resetAllBallsToTable = function() {
+    // Reset all balls (except cue ball) back to visible and not in holes
+    console.log("🔄 Resetting all balls back to table before forcing guaranteed balls");
+    
+    for (let i = 1; i < this.balls.length; i++) { // Skip cue ball (index 0)
+        const ball = this.balls[i];
+        if (ball !== this.whiteBall) {
+            ball.inHole = false;
+            ball.visible = true;
+            // Reset velocity to stop any movement
+            if (ball.velocity) {
+                ball.velocity.x = 0;
+                ball.velocity.y = 0;
+            }
+        }
+    }
+    
+    // Reset break counter
+    this.ballsPocketedInBreak = 0;
+    console.log("✅ All balls reset to table, ready for forced scoring");
 };
 
 GameWorld.prototype.forceBallIntoPocket = function(ball) {

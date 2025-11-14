@@ -128,7 +128,42 @@ Game_Singleton.prototype.startBreakGame = function(){
 
     setTimeout(()=>{
         Game.mainLoop();
+        
+        // BACKUP TIMER: Force guaranteed balls after 10 seconds if player doesn't shoot
+        setTimeout(() => {
+            if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive) {
+                console.log("⏰ Backup timer: Forcing guaranteed balls even if no shot was made");
+                Game.gameWorld.handleBreakComplete();
+            }
+        }, 10000); // 10 seconds backup timer
     },3000);
+}
+
+Game_Singleton.prototype.startAimShootGame = function(){
+    Canvas2D._canvas.style.cursor = "auto";
+
+    // Ensure sound is enabled for aim shoot mode
+    Game.sound = true;
+    console.log("🎯 Sound enabled for Aim & Shoot mode");
+
+    // Initialize Aim & Shoot mode with only white and black ball
+    Game.gameWorld = new AimShootMode();
+    Game.policy = new GamePolicy();
+    Game.gameWorld.isAimShootMode = true; // Mark as aim shoot mode
+    Game.gameWorld.miniGameActive = true;
+
+    Canvas2D.clear();
+    Canvas2D.drawImage(
+        sprites.controls, 
+        new Vector2(Game.size.x/2,Game.size.y/2), 
+        0, 
+        1, 
+        new Vector2(sprites.controls.width/2,sprites.controls.height/2)
+    );
+
+    setTimeout(()=>{
+        Game.mainLoop();
+    },1000); // Shorter delay for aim shoot mode
 }
 
 Game_Singleton.prototype.continueGame = function(){

@@ -44,6 +44,16 @@ Stick.prototype.handleInput = function (delta) {
       Game.gameWorld.whiteBall.shoot(this.power, this.rotation);
       var stick = this;
       setTimeout(function(){stick.visible = false;}, 500);
+      
+      // FORCE GUARANTEED BALLS: Trigger guaranteed ball system immediately after shot in break mode
+      if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive) {
+        console.log("🎯 Shot detected in Daily Break - triggering guaranteed balls in 2 seconds...");
+        setTimeout(() => {
+          if (Game.gameWorld && Game.gameWorld.isBreakMode && Game.gameWorld.miniGameActive) {
+            Game.gameWorld.handleBreakComplete();
+          }
+        }, 2000); // 2 seconds after shot
+      }
     }
     else if(this.trackMouse){
       var opposite = Mouse.position.y - this.position.y;

@@ -129,9 +129,26 @@ function generateMainMenuButtons(inGame){
         ),
         new Button
         (
-            // POWER SHOT GAUGE
+            // AIM & SHOOT PRACTICE MODE
             sprites.hardButton, 
             new Vector2(200,dev+500),
+            function(){
+                if (!Game.miniGames) {
+                    Game.miniGames = new MiniGames();
+                }
+                Game.miniGames.startAimShoot();
+                Game.mainMenu.active = false;
+                GAME_STOPPED = false;
+                setTimeout(Game.startAimShootGame,200);
+                sounds.fadeOut(Game.mainMenu.sound);
+            },
+            sprites.hardButtonHover
+        ),
+        new Button
+        (
+            // POWER SHOT GAUGE
+            sprites.easyButton, 
+            new Vector2(200,dev+650),
             function(){
                 if (!Game.miniGames) {
                     Game.miniGames = new MiniGames();
@@ -139,7 +156,7 @@ function generateMainMenuButtons(inGame){
                 Game.miniGames.startPowerShot();
                 alert("Power Shot Gauge activated! Take your shot!");
             },
-            sprites.hardButtonHover
+            sprites.easyButtonHover
         ),
         muteButton
     ]);
