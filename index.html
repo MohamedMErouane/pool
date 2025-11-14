@@ -568,6 +568,13 @@
         function startAimShoot() {
             console.log('=== STARTING AIM & SHOOT MINI-GAME ===');
             
+            // Hide bottom navigation bar during game
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav) {
+                bottomNav.style.display = 'none';
+                console.log('✅ Bottom navigation hidden for Aim Shoot');
+            }
+            
             // Set mini-game mode
             currentMiniGame = {
                 type: 'aimShoot',
@@ -575,18 +582,26 @@
                 completed: false
             };
             
+            console.log('Aim Shoot mini-game set:', currentMiniGame);
+            
             // Show game canvas container (same as test canvas)
             const gameCanvasContainer = document.getElementById('game-canvas-container');
+            console.log('Game canvas container found:', !!gameCanvasContainer);
+            
             if (gameCanvasContainer) {
                 gameCanvasContainer.style.display = 'flex';
-                console.log('✅ Game canvas container shown');
+                console.log('✅ Game canvas container shown for Aim Shoot');
+            } else {
+                console.error('❌ Game canvas container not found!');
             }
             
-            // Start the original pool game
+            // Start the original pool game in aim shoot mode
+            console.log('About to start original game for Aim Shoot...');
             startOriginalGame();
             
             // Show objective
             showMiniGameObjective('Aim & Shoot Challenge', 'Pot any ball in one shot to win!');
+            console.log('Aim Shoot setup complete');
         }
 
          function startDailyBreak() {
@@ -808,34 +823,54 @@
                 return;
             }
             
-            // Start new game with immediate start (skip 5-second delay)
-            if (Game.startNewGame) {
-                console.log('Starting game with custom initialization...');
-                
-                // Set cursor
-                Canvas2D._canvas.style.cursor = "auto";
-                
-                // Create new game world and policy
-                Game.gameWorld = new GameWorld();
-                Game.policy = new GamePolicy();
-                
-                // Clear canvas and start immediately
-                Canvas2D.clear();
-                
-                // Initialize AI
-                if (typeof AI !== 'undefined' && AI.init) {
-                    AI.init(Game.gameWorld, Game.policy);
-                    
-                    if(AI_ON && AI_PLAYER_NUM == 0){
-                        AI.startSession();
-                    }
+            // Check what mini-game mode we should start
+            if (currentMiniGame && currentMiniGame.type === 'dailyBreak') {
+                console.log('🔥 STARTING DAILY BREAK MODE');
+                if (Game.startBreakGame) {
+                    Game.startBreakGame();
+                    console.log('✅ Daily Break game started!');
+                } else {
+                    console.error('❌ Game.startBreakGame not available');
                 }
-                
-                // Start main loop immediately
-                Game.mainLoop();
-                console.log('✅ Original pool game started immediately!');
+            } else if (currentMiniGame && currentMiniGame.type === 'aimShoot') {
+                console.log('🎯 STARTING AIM SHOOT MODE');
+                if (Game.startAimShootGame) {
+                    Game.startAimShootGame();
+                    console.log('✅ Aim Shoot game started!');
+                } else {
+                    console.error('❌ Game.startAimShootGame not available');
+                }
             } else {
-                console.error('❌ Game.startNewGame not available');
+                console.log('🎱 STARTING REGULAR GAME');
+                // Start regular game
+                if (Game.startNewGame) {
+                    console.log('Starting game with custom initialization...');
+                    
+                    // Set cursor
+                    Canvas2D._canvas.style.cursor = "auto";
+                    
+                    // Create new game world and policy
+                    Game.gameWorld = new GameWorld();
+                    Game.policy = new GamePolicy();
+                    
+                    // Clear canvas and start immediately
+                    Canvas2D.clear();
+                    
+                    // Initialize AI
+                    if (typeof AI !== 'undefined' && AI.init) {
+                        AI.init(Game.gameWorld, Game.policy);
+                        
+                        if(AI_ON && AI_PLAYER_NUM == 0){
+                            AI.startSession();
+                        }
+                    }
+                    
+                    // Start main loop immediately
+                    Game.mainLoop();
+                    console.log('✅ Original pool game started immediately!');
+                } else {
+                    console.error('❌ Game.startNewGame not available');
+                }
             }
             
             // Add back button to return to main menu
