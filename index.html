@@ -824,6 +824,11 @@
                 return;
             }
             
+            // CRITICAL: Set display flags FIRST
+            window.DISPLAY = true;
+            window.GAME_STOPPED = false;
+            console.log('🎮 DISPLAY and GAME_STOPPED flags set');
+            
             // Hide all menu UI elements
             const miniGameUI = document.querySelector('.mini-game-ui');
             const backButton = document.querySelector('.back-button');
