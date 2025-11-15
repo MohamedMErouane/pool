@@ -595,15 +595,9 @@
                 console.error('❌ Game canvas container not found!');
             }
             
-            // Start the game directly without menu
-            console.log('About to start Aim Shoot game directly...');
-            initializeGameWorld();
-            
-            // Hide objective popup after game starts
-            setTimeout(() => {
-                const popup = document.querySelector('.mini-game-popup');
-                if (popup) popup.style.display = 'none';
-            }, 100);
+            // Start the game - this will properly initialize Canvas2D and then call initializeGameWorld
+            console.log('About to start Aim Shoot game...');
+            startOriginalGame();
             console.log('Aim Shoot setup complete');
         }
 
@@ -637,15 +631,9 @@
                 console.error('❌ Game canvas container not found!');
             }
             
-            // Start the game directly without menu
-            console.log('About to start Daily Break game directly...');
-            initializeGameWorld();
-            
-            // Hide objective popup after game starts
-            setTimeout(() => {
-                const popup = document.querySelector('.mini-game-popup');
-                if (popup) popup.style.display = 'none';
-            }, 100);
+            // Start the game - this will properly initialize Canvas2D and then call initializeGameWorld
+            console.log('About to start Daily Break game...');
+            startOriginalGame();
             console.log('Daily Break setup complete');
         }
 
