@@ -811,6 +811,13 @@
         function initializeGameWorld() {
             console.log('Initializing game world directly...');
             
+            // Verify GameWorld class is loaded
+            if (typeof GameWorld === 'undefined') {
+                console.error('❌ GameWorld not loaded yet, waiting...');
+                setTimeout(initializeGameWorld, 100);
+                return;
+            }
+            
             // Verify Canvas2D is ready
             if (!Canvas2D._canvas) {
                 console.error('❌ Canvas2D not ready, cannot initialize game world');
@@ -825,7 +832,7 @@
             if (backButton) backButton.style.display = 'none';
             
             // START GAME DIRECTLY - NO MENUS!
-            console.log('� STARTING GAME DIRECTLY - NO DELAYS!');
+            console.log('🎮 STARTING GAME DIRECTLY - NO DELAYS!');
             
             // Set cursor
             Canvas2D._canvas.style.cursor = "auto";
