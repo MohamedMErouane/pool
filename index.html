@@ -788,46 +788,51 @@
             console.log('DISPLAY set to:', window.DISPLAY);
             console.log('GAME_STOPPED set to:', window.GAME_STOPPED);
             
+            // Check if scripts are loaded
+            if (typeof GameWorld === 'undefined' || typeof Game === 'undefined') {
+                console.error('❌ Scripts not loaded yet! Please wait for page to fully load.');
+                gameIsRunning = false;
+                return;
+            }
+            
             if (Game) {
-                console.log('Game object available');
+                console.log('Game object available, GameWorld loaded');
                 
-                // Make sure Game.start() has been called first to set up Canvas2D and Game.size
-                if (!Game.size || !Canvas2D._canvas) {
-                    console.log('Starting Game system first...');
-                    Game.start('gameArea', 'screen', 1500, 825);
-                    
-                    // Wait for Canvas2D to be ready
-                    setTimeout(() => {
-                        initializeGameWorld();
-                    }, 200);
-                } else {
-                    initializeGameWorld();
-                }
+                // Canvas2D should already be initialized from Game.start() in LAB callback
+                // Just initialize the game world directly
+                initializeGameWorld();
             } else {
                 console.error('❌ Game object not available');
+                gameIsRunning = false;
             }
         }
         
         function initializeGameWorld() {
-            console.log('Initializing game world directly...');
+            console.log('✨ Initializing game world...');
             
-            // Verify GameWorld class is loaded
+            // Verify GameWorld class is loaded - NO RETRY, should already be loaded
             if (typeof GameWorld === 'undefined') {
-                console.error('❌ GameWorld not loaded yet, waiting...');
-                setTimeout(initializeGameWorld, 100);
+                console.error('❌ CRITICAL: GameWorld class not found! Scripts did not load properly.');
+                console.error('Please refresh the page and wait for scripts to load before clicking buttons.');
+                gameIsRunning = false;
+                alert('Game scripts not loaded. Please refresh the page and try again.');
                 return;
             }
             
             // Verify Canvas2D is ready
-            if (!Canvas2D._canvas) {
-                console.error('❌ Canvas2D not ready, cannot initialize game world');
+            if (!Canvas2D || !Canvas2D._canvas) {
+                console.error('❌ CRITICAL: Canvas2D not ready!');
+                gameIsRunning = false;
+                alert('Game canvas not ready. Please refresh the page.');
                 return;
             }
+            
+            console.log('✅ All dependencies verified, creating game world...');
             
             // CRITICAL: Set display flags FIRST
             window.DISPLAY = true;
             window.GAME_STOPPED = false;
-            console.log('🎮 DISPLAY and GAME_STOPPED flags set');
+            console.log('🎮 DISPLAY=true, GAME_STOPPED=false');
             
             // Hide all menu UI elements
             const miniGameUI = document.querySelector('.mini-game-ui');
@@ -837,7 +842,7 @@
             if (backButton) backButton.style.display = 'none';
             
             // START GAME DIRECTLY - NO MENUS!
-            console.log('🎮 STARTING GAME DIRECTLY - NO DELAYS!');
+            console.log('🎮 Creating GameWorld and GamePolicy...');
             
             // Set cursor
             Canvas2D._canvas.style.cursor = "auto";
@@ -846,15 +851,18 @@
             Game.gameWorld = new GameWorld();
             Game.policy = new GamePolicy();
             
+            console.log('✅ GameWorld created:', !!Game.gameWorld);
+            console.log('✅ GamePolicy created:', !!Game.policy);
+            
             // Set mini-game flags
             if (currentMiniGame && currentMiniGame.type === 'dailyBreak') {
                 Game.gameWorld.isBreakMode = true;
                 Game.gameWorld.miniGameActive = true;
-                console.log('🔥 BREAK MODE SET');
+                console.log('🔥 BREAK MODE ACTIVE');
             } else if (currentMiniGame && currentMiniGame.type === 'aimShoot') {
                 Game.gameWorld.isAimShootMode = true;
                 Game.gameWorld.miniGameActive = true;
-                console.log('🎯 AIM SHOOT MODE SET');
+                console.log('🎯 AIM SHOOT MODE ACTIVE');
             }
             
             // Clear canvas and start immediately
@@ -862,7 +870,7 @@
             
             // Start main loop immediately - NO DELAYS!
             Game.mainLoop();
-            console.log('✅ GAME STARTED IMMEDIATELY!');
+            console.log('✅ GAME LOOP STARTED - Game should now be playable!');
         }
 
         // Mini-game monitoring system
