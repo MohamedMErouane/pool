@@ -218,8 +218,8 @@ Ball.prototype.out = function(){
 }
 
 Ball.prototype.draw = function () {
-    if(!this.visible)
+    if (!this.visible) {
         return;
-
-	Canvas2D.drawImage(this.sprite, this.position, 0, 1, new Vector2(25,25));
+    }
+    Canvas2D.drawImage(this.sprite, this.position, 0, this.origin);
 };

@@ -73,6 +73,8 @@ function GameWorld() {
     this.breakCompleted = false; // Flag to prevent multiple break completions
     this.instantBallsForced = false; // Flag for instant ball forcing
     this.ballsForced = false; // Simple flag for guaranteed ball forcing
+    this.dailyBreakShotTaken = false; // Flag for daily break shot taken
+    this.dailyBreakCollisionDetected = false; // Flag for first collision detection
     
     // CLIENT SPECIFICATION: 3-shot system tracking
     this.dailyBreakAttempts = parseInt(localStorage.getItem('dailyBreakAttempts') || '0');
@@ -336,10 +338,49 @@ GameWorld.prototype.forceBlackBallInHole = function() {
 };
 
 GameWorld.prototype.handleInput = function (delta) {
+    if (localStorage.getItem('dailyBreakMode') === 'true' && !this.dailyBreakCollisionTriggered) {
+        if (this.stick.shot) {
+            this.dailyBreakCollisionTriggered = true;
+            console.log("💥 Daily Break Shot Triggered! Forcing outcome now.");
+
+            // Immediately force the balls into the pockets
+            this.forceDailyBreakBalls();
+
+            // Make the other balls scatter for a visual effect
+            this.balls.forEach(ball => {
+                if (ball !== this.whiteBall && !ball.inHole) {
+                    const randomVelocity = new Vector2(Math.random() * 2000 - 1000, Math.random() * 2000 - 1000);
+                    ball.velocity = randomVelocity;
+                    ball.moving = true;
+                }
+            });
+
+            // Stop the white ball
+            this.whiteBall.stop();
+            this.stick.shot = false; // Prevent normal shot logic
+
+            // Complete the break after a short visual delay
+            setTimeout(() => {
+                this.handleBreakComplete();
+            }, 800); // 800ms for the scatter effect to be visible
+
+            return; // Bypass normal input handling
+        }
+    }
     this.stick.handleInput(delta);
 };
 
 GameWorld.prototype.update = function (delta) {
+    // Daily Break Mode Logging
+    const dailyBreakMode = localStorage.getItem('dailyBreakMode');
+    if (dailyBreakMode === 'true' && !this.dailyBreakLogged) {
+        console.log("🎯🎯🎯 DAILY BREAK MODE ACTIVE! 🎯🎯🎯");
+        console.log("   dailyBreakCollisionDetected:", this.dailyBreakCollisionDetected);
+        console.log("   dailyBreakShotTaken:", this.dailyBreakShotTaken);
+        console.log("   White ball moving:", this.whiteBall.moving);
+        this.dailyBreakLogged = true; // Log once
+    }
+    
     this.stick.update(delta);
 
     for (var i = 0 ; i < this.balls.length; i++){
@@ -466,6 +507,26 @@ GameWorld.prototype.handleCollision = function(ball1, ball2, delta){
 
     var dist = ball1NewPos.distanceFrom(ball2NewPos);
 
+    // Daily Break: Force balls on first collision with white ball
+    if (localStorage.getItem('dailyBreakMode') === 'true' && !this.dailyBreakCollisionDetected) {
+        const isWhiteBallCollision = (ball1 === this.whiteBall || ball2 === this.whiteBall);
+        
+        if (isWhiteBallCollision && dist < BALL_SIZE) {
+            this.dailyBreakCollisionDetected = true;
+            console.log("💥💥💥 FIRST COLLISION DETECTED! FORCING BALLS NOW!");
+            
+            // Force balls to roll into pockets immediately after collision
+            const ballsForced = this.forceDailyBreakBalls();
+            console.log("✅ Forced", ballsForced, "balls after collision");
+            
+            // Complete break after balls finish rolling (give them time to animate)
+            setTimeout(() => {
+                console.log("⏰ Completing break after ball animation...");
+                this.handleBreakComplete();
+            }, 3500);
+        }
+    }
+
     if(dist<BALL_SIZE){
         Game.policy.checkColisionValidity(ball1, ball2);
 
@@ -533,6 +594,8 @@ GameWorld.prototype.reset = function () {
         this.aimShootTargetForced = false;
         this.instantBallsForced = false;
         this.breakCompleted = false;
+        this.dailyBreakShotTaken = false;
+        this.dailyBreakCollisionDetected = false;
     }
 
     if(AI_ON && AI_PLAYER_NUM === 0){
@@ -641,23 +704,48 @@ GameWorld.prototype.handleBreakComplete = function() {
     
     console.log("🎯 Break complete! Checking balls pocketed...");
     
-    // ENSURE MINIMUM BALLS ARE FORCED (CLIENT REQUIREMENT)
-    if (this.ballsPocketedInBreak < 2) {
-        console.log("⚠️ Not enough balls pocketed, FORCING more balls now!");
-        this.forceMinimumBalls();
+    // Check if this is daily break mode
+    const isDailyBreak = localStorage.getItem('dailyBreakMode') === 'true';
+    
+    if (!isDailyBreak) {
+        // ENSURE MINIMUM BALLS ARE FORCED (CLIENT REQUIREMENT) - only for non-daily break
+        if (this.ballsPocketedInBreak < 2) {
+            console.log("⚠️ Not enough balls pocketed, FORCING more balls now!");
+            this.forceMinimumBalls();
+        }
     }
     
-    console.log("� Final balls pocketed in break:", this.ballsPocketedInBreak);
+    console.log(" Final balls pocketed in break:", this.ballsPocketedInBreak);
     
     // Mark break as completed
     this.breakCompleted = true;
     this.miniGameActive = false;
+    localStorage.setItem('dailyBreakMode', 'false');
     
     if (!Game.miniGames) {
         Game.miniGames = new MiniGames();
     }
     
-    // Enhanced break analysis
+    // Show custom result for daily break with points
+    if (isDailyBreak && this.dailyBreakPoints && this.dailyBreakBallsScored) {
+        console.log("🎉 Showing daily break result");
+        this.showDailyBreakResult(this.dailyBreakBallsScored, this.dailyBreakPoints);
+        
+        // Reset game after showing result
+        setTimeout(() => {
+            this.reset();
+            this.ballsPocketedInBreak = 0;
+            this.dailyBreakPoints = 0;
+            this.dailyBreakBallsScored = 0;
+            Game.initMenus(false);
+            Game.mainMenu.active = true;
+            GAME_STOPPED = true;
+            console.log("🔄 Returned to main menu after daily break");
+        }, 4000);
+        return;
+    }
+    
+    // Enhanced break analysis (for non-daily break modes)
     const ballsRemaining = this.analyzeBallsAfterBreak();
     const result = Game.miniGames.completeBreakShot(this.ballsPocketedInBreak);
     
@@ -687,6 +775,69 @@ GameWorld.prototype.handleBreakComplete = function() {
     GAME_STOPPED = true;
     
     console.log("🔄 Immediately returned to initial screen");
+};
+
+GameWorld.prototype.forceDailyBreakBalls = function() {
+    console.log("🎲🎲🎲 FORCE DAILY BREAK BALLS CALLED! 🎲🎲🎲");
+
+    const odds = [
+        { balls: 8, weight: 3, points: 800 },   // 3% - 800 points
+        { balls: 6, weight: 7, points: 500 },   // 7% - 500 points
+        { balls: 5, weight: 15, points: 300 },  // 15% - 300 points
+        { balls: 4, weight: 20, points: 200 },  // 20% - 200 points
+        { balls: 2, weight: 25, points: 100 },  // 25% - 100 points
+        { balls: 1, weight: 30, points: 50 }    // 30% - 50 points
+    ];
+
+    const totalWeight = odds.reduce((sum, o) => sum + o.weight, 0);
+    const random = Math.random() * totalWeight;
+
+    let selectedOdd = odds[odds.length - 1]; // Default to 1 ball
+    let cumulativeWeight = 0;
+    for(const odd of odds){
+        cumulativeWeight += odd.weight;
+        if(random < cumulativeWeight){
+            selectedOdd = odd;
+            break;
+        }
+    }
+    
+    const ballsToForce = selectedOdd.balls;
+    const pointsToAward = selectedOdd.points;
+    
+    console.log(`🎯 Daily Break Result: ${ballsToForce} balls = ${pointsToAward} points!`);
+    console.log(`📊 Total balls available:`, this.balls.length);
+
+    // Store the points for the completion message
+    this.dailyBreakPoints = pointsToAward;
+    this.dailyBreakBallsScored = ballsToForce;
+
+    // DO NOT reset balls - just force some into pockets
+    this.ballsPocketedInBreak = 0;
+
+    // Get balls that can be pocketed (not the cue ball)
+    const availableBalls = [];
+    for (let i = 0; i < this.balls.length; i++) {
+        const ball = this.balls[i];
+        if (ball !== this.whiteBall && ball.visible && !ball.inHole) {
+            availableBalls.push(ball);
+        }
+    }
+    
+    console.log(`📊 Available balls to pocket:`, availableBalls.length);
+    
+    // Force the selected number of balls into pockets
+    for (let i = 0; i < ballsToForce && i < availableBalls.length; i++) {
+        const ballIndex = Math.floor(Math.random() * availableBalls.length);
+        const ballToPocket = availableBalls.splice(ballIndex, 1)[0];
+        
+        console.log(`⚡ Forcing ball #${i+1} into pocket...`);
+        this.forceBallIntoPocket(ballToPocket);
+        console.log(`   Ball inHole:`, ballToPocket.inHole, "visible:", ballToPocket.visible);
+    }
+
+    console.log(`✅✅✅ Daily Break COMPLETE: ${this.ballsPocketedInBreak} balls forced for ${pointsToAward} points! ✅✅✅`);
+    return this.ballsPocketedInBreak;
 };
 
 // INSTANT BALL FORCING - No delays, no complex conditions
@@ -855,28 +1006,66 @@ GameWorld.prototype.forceBallIntoPocket = function(ball) {
     
     const randomPocket = pockets[Math.floor(Math.random() * pockets.length)];
     
-    // Move ball to pocket and mark as pocketed
-    ball.position.x = randomPocket.x;
-    ball.position.y = randomPocket.y;
-    ball.inHole = true;
-    ball.visible = false;
-    ball.velocity = Vector2.zero;
+    // Calculate direction to pocket
+    const direction = new Vector2(randomPocket.x - ball.position.x, randomPocket.y - ball.position.y);
+    const distance = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
     
-    // Increment the counter and trigger the tracking
-    this.ballsPocketedInBreak++;
-    
-    // Play sound effect if available
-    if (Game.sound && SOUND_ON && typeof sounds !== 'undefined' && sounds.hole) {
-        try {
-            const holeSound = sounds.hole.cloneNode(true);
-            holeSound.volume = 0.3;
-            holeSound.play();
-        } catch (error) {
-            console.log("Sound effect error:", error);
-        }
+    // Normalize direction and set velocity (make balls roll toward pocket)
+    if (distance > 0) {
+        direction.x = (direction.x / distance) * 400; // Increased speed to 400
+        direction.y = (direction.y / distance) * 400;
     }
     
-    console.log("⚡ Forced ball into pocket! Total now:", this.ballsPocketedInBreak);
+    ball.velocity = direction;
+    ball.moving = true;
+    ball.visible = true; // Keep visible while rolling
+    
+    // Increment the counter immediately
+    this.ballsPocketedInBreak++;
+    
+    console.log(`⚡ Ball #${this.ballsPocketedInBreak} rolling to pocket at (${randomPocket.x}, ${randomPocket.y})`);
+    console.log(`   Current position: (${ball.position.x.toFixed(0)}, ${ball.position.y.toFixed(0)})`);
+    console.log(`   Velocity set to: (${ball.velocity.x.toFixed(0)}, ${ball.velocity.y.toFixed(0)})`);
+    
+    // Monitor ball and pocket it when it gets close
+    let checkCount = 0;
+    const maxChecks = 60; // 3 seconds max
+    const checkInterval = setInterval(() => {
+        checkCount++;
+        const distToPocket = Math.sqrt(
+            Math.pow(ball.position.x - randomPocket.x, 2) + 
+            Math.pow(ball.position.y - randomPocket.y, 2)
+        );
+        
+        if (checkCount % 10 === 0) {
+            console.log(`   Distance to pocket: ${distToPocket.toFixed(0)}, Ball position: (${ball.position.x.toFixed(0)}, ${ball.position.y.toFixed(0)})`);
+        }
+        
+        if (distToPocket < 40 || !ball.moving || checkCount >= maxChecks) {
+            clearInterval(checkInterval);
+            
+            // Now pocket the ball
+            ball.position.x = randomPocket.x;
+            ball.position.y = randomPocket.y;
+            ball.inHole = true;
+            ball.visible = false;
+            ball.moving = false;
+            ball.velocity = Vector2.zero;
+            
+            // Play sound effect
+            if (Game.sound && SOUND_ON && typeof sounds !== 'undefined' && sounds.hole) {
+                try {
+                    const holeSound = sounds.hole.cloneNode(true);
+                    holeSound.volume = 0.5;
+                    holeSound.play();
+                } catch (error) {
+                    console.log("Sound effect error:", error);
+                }
+            }
+            
+            console.log("✅ Ball entered pocket successfully!");
+        }
+    }, 50); // Check every 50ms
 };
 
 GameWorld.prototype.analyzeBallsAfterBreak = function() {
@@ -987,6 +1176,143 @@ GameWorld.prototype.detectBallClusters = function(ballPositions) {
     }
     
     return clusteredBalls;
+};
+
+GameWorld.prototype.showDailyBreakResult = function(ballsScored, pointsAwarded) {
+    console.log(`🎉 Showing Daily Break Result: ${ballsScored} balls = ${pointsAwarded} points`);
+    
+    // HIDE ALL GAME ELEMENTS - POOL TABLE AND CONTAINERS
+    const gameCanvas = document.getElementById('gameArea');
+    const screenElement = document.getElementById('screen');
+    const gameCanvasContainer = document.getElementById('game-canvas-container');
+    
+    if (gameCanvas) {
+        gameCanvas.style.display = 'none';
+        console.log("🎱 Pool table canvas hidden");
+    }
+    if (screenElement) {
+        screenElement.style.display = 'none';
+        console.log("🎱 Screen element hidden");
+    }
+    if (gameCanvasContainer) {
+        gameCanvasContainer.style.display = 'none';
+        console.log("🎱 Game container hidden");
+    }
+    
+    // Create overlay with SOLID BLACK background
+    const overlay = document.createElement('div');
+    overlay.id = 'daily-break-result-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 99999;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        color: white;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        max-width: 500px;
+        animation: slideIn 0.5s ease-out;
+    `;
+    
+    content.innerHTML = `
+        <h1 style="margin: 0 0 20px 0; font-size: 36px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
+            🎯 DAILY BREAK!
+        </h1>
+        <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; margin-bottom: 20px;">
+            <div style="font-size: 18px; margin-bottom: 10px; opacity: 0.9;">Balls Scored</div>
+            <div style="font-size: 64px; font-weight: bold; color: #FFD700; text-shadow: 3px 3px 6px rgba(0,0,0,0.5);">
+                ${ballsScored}
+            </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; margin-bottom: 20px;">
+            <div style="font-size: 18px; margin-bottom: 10px; opacity: 0.9;">Points Earned</div>
+            <div style="font-size: 72px; font-weight: bold; color: #00FF88; text-shadow: 3px 3px 6px rgba(0,0,0,0.5);">
+                +${pointsAwarded}
+            </div>
+        </div>
+        <div style="font-size: 14px; opacity: 0.8; margin-top: 20px;">
+            ${this.getDailyBreakMessage(ballsScored)}
+        </div>
+    `;
+    
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+    
+    // Add points to user's total
+    console.log("💰💰💰 ADDING POINTS TO TOTAL 💰💰💰");
+    console.log("   Points to award:", pointsAwarded);
+    console.log("   Game object exists:", typeof Game !== 'undefined');
+    console.log("   Game.dailyRewards exists:", typeof Game !== 'undefined' && !!Game.dailyRewards);
+    
+    if (typeof Game !== 'undefined' && Game.dailyRewards) {
+        const oldTotal = Game.dailyRewards.totalTokens;
+        console.log("   BEFORE: totalTokens =", oldTotal);
+        
+        // Add the points
+        Game.dailyRewards.totalTokens = oldTotal + pointsAwarded;
+        
+        // Save to localStorage
+        localStorage.setItem('totalTokens', Game.dailyRewards.totalTokens.toString());
+        
+        console.log("   AFTER: totalTokens =", Game.dailyRewards.totalTokens);
+        console.log("   Calculation:", oldTotal, "+", pointsAwarded, "=", Game.dailyRewards.totalTokens);
+        console.log("   localStorage value:", localStorage.getItem('totalTokens'));
+        
+        // Force update the header display
+        const tokenDisplay = document.getElementById('token-balance');
+        console.log("   Token display element found:", !!tokenDisplay);
+        
+        if (tokenDisplay) {
+            const newDisplayValue = Math.round(Game.dailyRewards.totalTokens) + ' P';
+            console.log("   Setting display to:", newDisplayValue);
+            tokenDisplay.textContent = newDisplayValue;
+            console.log("   Display now shows:", tokenDisplay.textContent);
+            
+            // Double check it updated
+            setTimeout(() => {
+                console.log("   Display check after 100ms:", document.getElementById('token-balance').textContent);
+            }, 100);
+        } else {
+            console.error("❌ Token display element 'token-balance' not found in DOM!");
+        }
+    } else {
+        console.error("❌ Cannot add points - Game.dailyRewards not initialized!");
+        console.error("   Game exists:", typeof Game !== 'undefined');
+        if (typeof Game !== 'undefined') {
+            console.error("   Game.dailyRewards:", Game.dailyRewards);
+        }
+    }
+    
+    // Remove overlay after 3 seconds - don't show game elements again
+    setTimeout(() => {
+        if (overlay.parentNode) {
+            document.body.removeChild(overlay);
+        }
+        // Keep game elements hidden - user will return to menu
+        console.log("✅ Overlay removed, game elements remain hidden");
+    }, 3000);
+};
+
+GameWorld.prototype.getDailyBreakMessage = function(ballsScored) {
+    if (ballsScored === 8) return "🏆 LEGENDARY! Maximum balls scored!";
+    if (ballsScored === 6) return "🌟 INCREDIBLE! Amazing break!";
+    if (ballsScored === 5) return "⚡ EXCELLENT! Great shot!";
+    if (ballsScored === 4) return "🔥 GREAT! Well played!";
+    if (ballsScored === 2) return "💪 GOOD! Nice break!";
+    return "👍 Keep practicing!";
 };
 
 GameWorld.prototype.showBreakResult = function(result) {

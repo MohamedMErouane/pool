@@ -34,6 +34,17 @@ Stick.prototype.handleInput = function (delta) {
     }
 
     else if (this.power>0 && Mouse.left.down){
+
+      // DAILY BREAK MODE: Let white ball shoot normally, then force balls on collision
+      if (localStorage.getItem('dailyBreakMode') === 'true') {
+          console.log("🎯 DAILY BREAK MODE - Allowing normal shot, will force balls on collision");
+          if (Game.gameWorld && !Game.gameWorld.dailyBreakShotTaken) {
+              Game.gameWorld.dailyBreakShotTaken = true;
+              console.log("💥 Daily break shot initiated - white ball will shoot normally");
+          }
+          // Don't return - let the normal shot happen below
+      }
+
       var strike = sounds.strike.cloneNode(true);
       strike.volume = (this.power/(10))<1?(this.power/(10)):1;
       strike.play();
