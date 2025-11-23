@@ -61,10 +61,16 @@ Ball.prototype.update = function(delta){
 
     this.updatePosition(delta);
 
-    this.velocity.multiplyWith(0.98);
+    // Only apply friction if ball is NOT being forced into a hole
+    if (!this.isBeingForced) {
+        this.velocity.multiplyWith(0.98);
+    }
 
 	if(this.moving && Math.abs(this.velocity.x) < 1 && Math.abs(this.velocity.y) < 1){
-        this.stop();
+        // Don't stop if ball is being forced
+        if (!this.isBeingForced) {
+            this.stop();
+        }
     }
     
     // CLIENT REQUIREMENT ENFORCEMENT: Check if ball should be forced into hole

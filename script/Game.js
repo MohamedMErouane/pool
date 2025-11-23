@@ -186,6 +186,7 @@ Game_Singleton.prototype.startAimShootGame = function(){
     Game.gameWorld.miniGameActive = true;
     Game.gameWorld.aimShootCompleted = false;
     Game.gameWorld.aimShootTargetForced = false;
+    Game.gameWorld.aimShootShotTriggered = false; // Initialize shot trigger flag
     
     console.log(`🎯 AIM SHOOT STARTED - Attempt ${aimShootAttempts + 1} of 3`);
     console.log("📋 CLIENT SPEC: Ball must ALWAYS go into hole, show points, auto-reset");
