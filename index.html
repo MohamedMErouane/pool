@@ -86,6 +86,31 @@
                     
                     console.log('✅ Game system initialized, waiting for button click');
                     
+                    // FORCE RESET: Clear old token data and start fresh
+                    console.log('🔄 Resetting token system...');
+                    console.log('   Old localStorage value:', localStorage.getItem('totalTokens'));
+                    
+                    // If there's old data (like 45), clear it and start at 0
+                    if (!localStorage.getItem('tokenSystemReset')) {
+                        console.log('⚠️ First time running new system - resetting to 0');
+                        localStorage.setItem('totalTokens', '0');
+                        localStorage.setItem('tokenSystemReset', 'true');
+                    }
+                    
+                    // Update token display from localStorage (default to 0 if not set)
+                    const savedTokens = parseFloat(localStorage.getItem('totalTokens')) || 0;
+                    const tokenDisplay = document.getElementById('token-balance');
+                    if (tokenDisplay) {
+                        tokenDisplay.textContent = savedTokens + ' P';
+                        console.log('💰 Token display set to:', savedTokens, 'P');
+                    }
+                    
+                    // Initialize Game.dailyRewards if needed
+                    if (!Game.dailyRewards) {
+                        Game.dailyRewards = new DailyRewards();
+                        console.log('✅ DailyRewards initialized, totalTokens:', Game.dailyRewards.totalTokens);
+                    }
+                    
                     // Initialize referral system
                     if (typeof window.initializeReferralSystem === 'function') {
                         window.initializeReferralSystem();
@@ -176,7 +201,7 @@
             <span class="app-title">8Ball Arena</span>
         </div>
         <div class="header-right">
-            <div class="points-display">1,000 P</div>
+            <div class="points-display" id="token-balance">0 P</div>
             <button class="hamburger-menu" onclick="toggleDropdownMenu()">
                 <span></span>
                 <span></span>
@@ -604,6 +629,10 @@
          function startDailyBreak() {
             console.log('=== STARTING DAILY BREAK MINI-GAME ===');
             
+            // SET DAILY BREAK MODE FLAG - CRITICAL FOR BALL FORCING
+            localStorage.setItem('dailyBreakMode', 'true');
+            console.log('✅ dailyBreakMode set to true');
+            
             // Hide bottom navigation bar during game
             const bottomNav = document.querySelector('.bottom-nav');
             if (bottomNav) {
@@ -924,38 +953,14 @@
         }
         
         function handleDailyBreakComplete(pottedBalls) {
-            console.log('=== DAILY BREAK COMPLETED ===');
-            console.log('Potted balls:', pottedBalls);
+            console.log('=== DAILY BREAK COMPLETED (OLD FUNCTION - SHOULD NOT BE CALLED) ===');
+            console.log('This function is deprecated. GameWorld.showDailyBreakResult should handle this.');
             
-            // Perform daily check-in with DailyReward system
-            const result = DailyReward.performDailyCheckIn();
-            console.log('Daily reward result:', result);
-            
-            let message = `Break shot completed!\\n`;
-            message += `Balls potted: ${pottedBalls}\\n`;
-            
-            if (result.success) {
-                const bonusPoints = pottedBalls * 5; // Bonus for balls potted
-                const totalReward = result.reward + bonusPoints;
-                
-                // Add bonus to total tokens
-                DailyReward.totalTokens += bonusPoints;
-                localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
-                
-                message += `🎉 Daily Break completed! You earned ${totalReward} tokens!\\n`;
-                message += `Base reward: ${result.reward} tokens\\n`;
-                if (bonusPoints > 0) {
-                    message += `Bonus for ${pottedBalls} balls: ${bonusPoints} tokens\\n`;
-                }
-                message += `Total tokens: ${DailyReward.totalTokens}`;
-            } else {
-                message += `\\n${result.message}`;
-            }
-            
+            // Just return to menu without showing anything
+            // The new system handles everything in GameWorld.js
             setTimeout(() => {
-                alert(message);
                 returnToMainMenu();
-            }, 1000);
+            }, 4000);
         }
         
         function handleAimShootComplete(pottedBalls) {
@@ -1406,6 +1411,16 @@
                 overflow-y: auto;
             `;
             
+            // Add flash animation style
+            const flashStyle = document.createElement('style');
+            flashStyle.textContent = `
+                @keyframes flash {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.2); color: #fff; text-shadow: 0 0 10px currentColor; }
+                }
+            `;
+            document.head.appendChild(flashStyle);
+            
             modalContent.innerHTML = `
                 <div style="text-align: center; margin-bottom: 25px;">
                     <h2 style="margin: 0; font-size: 28px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">🔗 Referral System</h2>
@@ -1417,11 +1432,11 @@
                     <h3 style="margin: 0 0 15px 0; font-size: 18px;">📊 Your Stats</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                         <div style="text-align: center;">
-                            <div style="font-size: 24px; font-weight: bold; color: #ffd700;">${stats.totalReferred}</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #ffd700;" data-stat="totalReferred">${stats.totalReferred}</div>
                             <div style="font-size: 12px; opacity: 0.8;">Friends Referred</div>
                         </div>
                         <div style="text-align: center;">
-                            <div style="font-size: 24px; font-weight: bold; color: #00ff88;">${stats.totalEarned}</div>
+                            <div style="font-size: 24px; font-weight: bold; color: #00ff88;" data-stat="totalEarned">${stats.totalEarned}</div>
                             <div style="font-size: 12px; opacity: 0.8;">Tokens Earned</div>
                         </div>
                     </div>
@@ -1535,6 +1550,41 @@
             setTimeout(() => {
                 ReferralManager.generateQRCode('qr-code-container');
             }, 100);
+            
+            // AUTO-REFRESH: Update stats every 2 seconds to show real-time changes
+            const statsRefreshInterval = setInterval(() => {
+                if (!document.getElementById('referral-modal')) {
+                    clearInterval(statsRefreshInterval);
+                    return;
+                }
+                
+                const latestStats = ReferralManager.getReferralStats();
+                
+                // Update the stats display elements
+                const friendsReferred = modalContent.querySelector('[data-stat="totalReferred"]');
+                const tokensEarned = modalContent.querySelector('[data-stat="totalEarned"]');
+                
+                if (friendsReferred && tokensEarned) {
+                    const oldFriends = friendsReferred.textContent;
+                    const oldTokens = tokensEarned.textContent;
+                    
+                    friendsReferred.textContent = latestStats.totalReferred;
+                    tokensEarned.textContent = latestStats.totalEarned;
+                    
+                    // Log if changed
+                    if (oldFriends != latestStats.totalReferred || oldTokens != latestStats.totalEarned) {
+                        console.log('📊 Referral stats updated:', latestStats);
+                        
+                        // Add a brief flash animation
+                        friendsReferred.style.animation = 'flash 0.5s';
+                        tokensEarned.style.animation = 'flash 0.5s';
+                        setTimeout(() => {
+                            friendsReferred.style.animation = '';
+                            tokensEarned.style.animation = '';
+                        }, 500);
+                    }
+                }
+            }, 2000); // Check every 2 seconds
             
             setActiveNav(3);
         }

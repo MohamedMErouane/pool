@@ -343,10 +343,27 @@ ReferralSystem.prototype.getReferralStats = function() {
     const globalReferrals = JSON.parse(localStorage.getItem('globalReferrals') || '{}');
     const myReferrals = globalReferrals[this.referralCode] || [];
     
+    // Get total earned including pending rewards
+    let totalEarned = this.totalReferralRewards;
+    const pendingRewards = JSON.parse(localStorage.getItem('pendingReferralRewards') || '{}');
+    if (pendingRewards[this.referralCode]) {
+        totalEarned += pendingRewards[this.referralCode];
+    }
+    
+    // Also check referrerStats
+    const referrerStats = JSON.parse(localStorage.getItem('referrerStats_' + this.referralCode) || '{"totalEarned": 0}');
+    if (referrerStats.totalEarned > totalEarned) {
+        totalEarned = referrerStats.totalEarned;
+    }
+    
+    console.log(`📊 Referral stats for ${this.referralCode}:`);
+    console.log(`   - Friends referred: ${myReferrals.length}`);
+    console.log(`   - Total earned: ${totalEarned}`);
+    
     return {
         referralCode: this.referralCode,
         totalReferred: myReferrals.length,
-        totalEarned: this.totalReferralRewards,
+        totalEarned: totalEarned,
         referredUsers: myReferrals,
         referredBy: this.referredBy
     };

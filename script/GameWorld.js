@@ -69,10 +69,13 @@ function GameWorld() {
     this.isAimShootMode = false;
     this.aimShootCompleted = false;
     this.aimShootTargetForced = false; // Flag for aim & shoot target forcing
+    this.aimShootShotTriggered = false; // Flag for aim & shoot shot detection
     this.powerShotActive = false;
     this.breakCompleted = false; // Flag to prevent multiple break completions
     this.instantBallsForced = false; // Flag for instant ball forcing
     this.ballsForced = false; // Simple flag for guaranteed ball forcing
+    this.dailyBreakShotTaken = false; // Flag for daily break shot taken
+    this.dailyBreakCollisionDetected = false; // Flag for first collision detection
     
     // CLIENT SPECIFICATION: 3-shot system tracking
     this.dailyBreakAttempts = parseInt(localStorage.getItem('dailyBreakAttempts') || '0');
@@ -156,8 +159,8 @@ GameWorld.prototype.forceGuaranteedBallsSimple = function() {
     // IMMEDIATE CALLBACK TO HANDLE COMPLETION
     setTimeout(() => {
         if (this.isBreakMode && this.miniGameActive) {
-            console.log("🔄 Break complete - no complex handling needed");
-            // DISABLED: this.handleBreakComplete();
+            console.log("🔄 Triggering break completion with guaranteed results");
+            this.handleBreakComplete();
         }
     }, 500);
 };
@@ -265,37 +268,121 @@ GameWorld.prototype.forceMinimumBalls = function() {
 
 // FORCE BLACK BALL INTO HOLE - FOR AIM & SHOOT MODE
 GameWorld.prototype.forceBlackBallInHole = function() {
-    console.log("🎯 FORCING BLACK BALL INTO HOLE - GUARANTEED!");
+    console.log("🎯 FORCING BLACK BALL INTO HOLE - GUARANTEED SCORING!");
     
-    let blackBallForced = false;
+    let targetBall = null;
     
-    // Look for black ball (8-ball) or any non-white ball in AimShootMode
+    // In Aim & Shoot mode, find the BLACK ball (ball #8, NOT the white cue ball)
     for (let i = 0; i < this.balls.length; i++) {
         const ball = this.balls[i];
         
-        // Force any visible non-white ball (prioritize black ball if found)
-        if (ball && ball !== this.whiteBall && ball.visible && !ball.inHole) {
-            // Check if it's the black ball (8-ball) or just any ball in AimShootMode
-            let isBlackBall = false;
-            
-            // Try to identify black ball
-            if (ball.sprite && ball.sprite === sprites.blackBall) {
-                isBlackBall = true;
-            } else if (ball.color && ball.color === Color.black) {
-                isBlackBall = true;
-            } else if (this.blackBall && ball === this.blackBall) {
-                isBlackBall = true;
+        if (!ball || ball.inHole || !ball.visible) {
+            console.log(`Skipping ball ${i}: inHole=${ball?.inHole}, visible=${ball?.visible}`);
+            continue;
+        }
+        
+        // Log ball info
+        console.log(`Ball ${i}: number=${ball.number}, isWhiteBall=${ball === this.whiteBall}`);
+        
+        // IMPORTANT: Skip white/cue ball (ball number 0)
+        if (ball.number === 0 || ball === this.whiteBall) {
+            console.log("⚪ Skipping WHITE ball (cue ball)");
+            continue;
+        }
+        
+        // This MUST be the BLACK ball - the only other ball in Aim & Shoot mode
+        targetBall = ball;
+        console.log(`🎱 Found BLACK BALL - Number: ${ball.number}, Position: (${ball.position.x.toFixed(0)}, ${ball.position.y.toFixed(0)})`);
+        break;
+    }
+    
+    if (!targetBall) {
+        console.log("❌ ERROR: No black ball found! Balls in game:", this.balls.length);
+        // Emergency: Force any non-white ball
+        for (let i = 0; i < this.balls.length; i++) {
+            if (this.balls[i] !== this.whiteBall && this.balls[i].visible && !this.balls[i].inHole) {
+                targetBall = this.balls[i];
+                console.log("⚠️ EMERGENCY: Using ball at index", i);
+                break;
             }
+        }
+        if (!targetBall) {
+            console.log("❌ CRITICAL: Still no target ball found!");
+            return;
+        }
+    }
+    
+    // Find closest pocket
+    const pockets = [
+        { x: 62, y: 62 },     // Top-left
+        { x: 400, y: 50 },    // Top-center
+        { x: 738, y: 62 },    // Top-right
+        { x: 62, y: 438 },    // Bottom-left
+        { x: 400, y: 450 },   // Bottom-center
+        { x: 738, y: 438 }    // Bottom-right
+    ];
+    
+    // Find closest pocket to ball
+    let closestPocket = pockets[0];
+    let minDistance = Infinity;
+    for (let pocket of pockets) {
+        const dist = Math.sqrt(
+            Math.pow(targetBall.position.x - pocket.x, 2) + 
+            Math.pow(targetBall.position.y - pocket.y, 2)
+        );
+        if (dist < minDistance) {
+            minDistance = dist;
+            closestPocket = pocket;
+        }
+    }
+    
+    console.log(`🎯 BLACK BALL at (${targetBall.position.x.toFixed(0)}, ${targetBall.position.y.toFixed(0)})`);
+    console.log(`🎯 Closest pocket at (${closestPocket.x}, ${closestPocket.y})`);
+    console.log(`📏 Distance to pocket: ${minDistance.toFixed(0)} pixels`);
+    
+    // Store reference for use in interval
+    const gameWorld = this;
+    
+    // Mark ball as being forced
+    targetBall.isBeingForced = true;
+    targetBall.friction = 0;
+    
+    console.log(`✅ Starting GUARANTEED forced roll to pocket...`);
+    
+    // AGGRESSIVE FORCING: Move ball directly toward pocket every frame
+    let checkCount = 0;
+    const maxChecks = 300; // 15 seconds max
+    
+    const checkInterval = setInterval(() => {
+        checkCount++;
+        
+        if (!targetBall || !targetBall.position) {
+            clearInterval(checkInterval);
+            return;
+        }
+        
+        // Calculate current distance to pocket
+        const dx = closestPocket.x - targetBall.position.x;
+        const dy = closestPocket.y - targetBall.position.y;
+        const distToPocket = Math.sqrt(dx * dx + dy * dy);
+        
+        if (checkCount % 20 === 0) {
+            console.log(`📍 Count: ${checkCount}, Distance: ${distToPocket.toFixed(0)}px, Ball pos: (${targetBall.position.x.toFixed(0)}, ${targetBall.position.y.toFixed(0)})`);
+        }
+        
+        // If close enough, pocket the ball immediately
+        if (distToPocket < 50) {
+            clearInterval(checkInterval);
             
-            // FORCE THE BALL INTO HOLE - GUARANTEED
-            ball.inHole = true;
-            ball.visible = false;
-            ball.moving = false;
-            ball.velocity = Vector2.zero;
-            ball.position = new Vector2(-4000, -4000); // Move far off screen
+            // POCKET THE BALL
+            targetBall.isBeingForced = false;
+            targetBall.position = new Vector2(closestPocket.x, closestPocket.y);
+            targetBall.inHole = true;
+            targetBall.visible = false;
+            targetBall.moving = false;
+            targetBall.velocity = Vector2.zero;
             
-            console.log(`✅ ${isBlackBall ? 'BLACK' : 'TARGET'} BALL FORCED INTO HOLE!`);
-            blackBallForced = true;
+            console.log("✅✅✅ BLACK BALL SCORED - ENTERED HOLE!");
             
             // Play hole sound
             if (Game.sound && SOUND_ON && typeof sounds !== 'undefined' && sounds.hole) {
@@ -308,38 +395,110 @@ GameWorld.prototype.forceBlackBallInHole = function() {
                 }
             }
             
-            // Trigger hole detection
+            // Trigger completion
             setTimeout(() => {
-                if (Game.policy && Game.policy.handleBallInHole) {
-                    Game.policy.handleBallInHole(ball);
+                if (gameWorld.isAimShootMode) {
+                    console.log("🎯 Calling completeAimShootShot...");
+                    gameWorld.completeAimShootShot();
                 }
-            }, 100);
+            }, 500);
             
-            // Only force one ball in aim & shoot mode
-            break;
+            return;
         }
-    }
-    
-    // BACKUP: If no ball was found, force the blackBall directly
-    if (!blackBallForced && this.blackBall && this.blackBall.visible) {
-        console.log("🔄 BACKUP: Forcing blackBall property directly");
-        this.blackBall.inHole = true;
-        this.blackBall.visible = false;
-        this.blackBall.moving = false;
-        this.blackBall.velocity = Vector2.zero;
-        this.blackBall.position = new Vector2(-4000, -4000);
-        blackBallForced = true;
-        console.log("✅ BACKUP: Black ball forced via blackBall property!");
-    }
-    
-    console.log(`✅ BLACK BALL FORCING COMPLETE: ${blackBallForced ? 'SUCCESS' : 'FAILED'}!`);
+        
+        // FORCE MOVEMENT: Directly update position toward pocket
+        const speed = 3; // Pixels per frame (50ms = 60 pixels/second)
+        const stepX = (dx / distToPocket) * speed;
+        const stepY = (dy / distToPocket) * speed;
+        
+        targetBall.position = new Vector2(
+            targetBall.position.x + stepX,
+            targetBall.position.y + stepY
+        );
+        
+        // Also set velocity for visual effect
+        targetBall.velocity = new Vector2(
+            (dx / distToPocket) * 200,
+            (dy / distToPocket) * 200
+        );
+        targetBall.moving = true;
+        targetBall.visible = true;
+        targetBall.friction = 0;
+        
+        // Safety: If taking too long, just teleport to pocket
+        if (checkCount >= maxChecks) {
+            clearInterval(checkInterval);
+            console.log("⚠️ Max time reached, forcing ball into pocket NOW!");
+            
+            targetBall.isBeingForced = false;
+            targetBall.position = new Vector2(closestPocket.x, closestPocket.y);
+            targetBall.inHole = true;
+            targetBall.visible = false;
+            targetBall.moving = false;
+            targetBall.velocity = Vector2.zero;
+            
+            setTimeout(() => {
+                if (gameWorld.isAimShootMode) {
+                    gameWorld.completeAimShootShot();
+                }
+            }, 500);
+        }
+    }, 50); // Every 50ms
 };
 
 GameWorld.prototype.handleInput = function (delta) {
+    // AIM & SHOOT MODE: Just mark that shot was taken, forcing will happen when balls stop
+    if (this.isAimShootMode && !this.aimShootShotTriggered) {
+        if (this.stick.shot) {
+            this.aimShootShotTriggered = true;
+            console.log("🎯 AIM & SHOOT: Shot detected! Black ball will be forced into hole when balls stop.");
+        }
+    }
+
+    // Daily Break Mode handling
+    if (localStorage.getItem('dailyBreakMode') === 'true' && !this.dailyBreakCollisionTriggered) {
+        if (this.stick.shot) {
+            this.dailyBreakCollisionTriggered = true;
+            console.log("💥 Daily Break Shot Triggered! Forcing outcome now.");
+
+            // Immediately force the balls into the pockets
+            this.forceDailyBreakBalls();
+
+            // Make the other balls scatter for a visual effect
+            this.balls.forEach(ball => {
+                if (ball !== this.whiteBall && !ball.inHole) {
+                    const randomVelocity = new Vector2(Math.random() * 2000 - 1000, Math.random() * 2000 - 1000);
+                    ball.velocity = randomVelocity;
+                    ball.moving = true;
+                }
+            });
+
+            // Stop the white ball
+            this.whiteBall.stop();
+            this.stick.shot = false; // Prevent normal shot logic
+
+            // Complete the break after a short visual delay
+            setTimeout(() => {
+                this.handleBreakComplete();
+            }, 800); // 800ms for the scatter effect to be visible
+
+            return; // Bypass normal input handling
+        }
+    }
     this.stick.handleInput(delta);
 };
 
 GameWorld.prototype.update = function (delta) {
+    // Daily Break Mode Logging
+    const dailyBreakMode = localStorage.getItem('dailyBreakMode');
+    if (dailyBreakMode === 'true' && !this.dailyBreakLogged) {
+        console.log("🎯🎯🎯 DAILY BREAK MODE ACTIVE! 🎯🎯🎯");
+        console.log("   dailyBreakCollisionDetected:", this.dailyBreakCollisionDetected);
+        console.log("   dailyBreakShotTaken:", this.dailyBreakShotTaken);
+        console.log("   White ball moving:", this.whiteBall.moving);
+        this.dailyBreakLogged = true; // Log once
+    }
+    
     this.stick.update(delta);
 
     for (var i = 0 ; i < this.balls.length; i++){
@@ -352,25 +511,26 @@ GameWorld.prototype.update = function (delta) {
         this.balls[i].update(delta);
     }
     
-    // SIMPLE DEBUG: Show current mode
-    if (this.isBreakMode) {
-        console.log("🔥 BREAK MODE ACTIVE");
-    }
-    if (this.isAimShootMode) {
-        console.log("🎯 AIM SHOOT MODE ACTIVE");
+    // AGGRESSIVE FORCING: Force balls after any shot is detected
+    if (this.isBreakMode && this.miniGameActive && !this.ballsForced) {
+        // Check if white ball was shot (indicating a shot was taken)
+        if (this.whiteBall.moving || Game.policy.turnPlayed) {
+            console.log("🔥 Shot detected in break mode - marking for forcing");
+            this.ballsForced = true; // Mark as handled to prevent multiple calls
+        }
     }
 
     if(!this.ballsMoving() && AI.finishedSession){
         // Check if in break mode and shot is complete
         if (this.isBreakMode && this.miniGameActive) {
-            console.log("🔄 Break shot complete - balls already forced!");
-            // DISABLED: this.handleBreakComplete();
+            this.handleBreakComplete();
             return;
         }
         
-        // Check if in aim shoot mode and shot is complete
-        if (this.isAimShootMode && this.miniGameActive && !this.aimShootCompleted) {
-            this.handleAimShootComplete();
+        // AIM & SHOOT: When balls stop moving, force black ball into hole if not already forced
+        if (this.isAimShootMode && this.miniGameActive && this.aimShootShotTriggered && !this.aimShootCompleted) {
+            console.log("🎯 AIM & SHOOT: Balls stopped moving, forcing black ball into hole NOW!");
+            this.forceBlackBallInHole();
             return;
         }
         
@@ -457,6 +617,26 @@ GameWorld.prototype.handleCollision = function(ball1, ball2, delta){
 
     var dist = ball1NewPos.distanceFrom(ball2NewPos);
 
+    // Daily Break: Force balls on first collision with white ball
+    if (localStorage.getItem('dailyBreakMode') === 'true' && !this.dailyBreakCollisionDetected) {
+        const isWhiteBallCollision = (ball1 === this.whiteBall || ball2 === this.whiteBall);
+        
+        if (isWhiteBallCollision && dist < BALL_SIZE) {
+            this.dailyBreakCollisionDetected = true;
+            console.log("💥💥💥 FIRST COLLISION DETECTED! FORCING BALLS NOW!");
+            
+            // Force balls to roll into pockets immediately after collision
+            const ballsForced = this.forceDailyBreakBalls();
+            console.log("✅ Forced", ballsForced, "balls after collision");
+            
+            // Complete break after balls finish rolling (give them time to animate)
+            setTimeout(() => {
+                console.log("⏰ Completing break after ball animation...");
+                this.handleBreakComplete();
+            }, 3500);
+        }
+    }
+
     if(dist<BALL_SIZE){
         Game.policy.checkColisionValidity(ball1, ball2);
 
@@ -524,6 +704,8 @@ GameWorld.prototype.reset = function () {
         this.aimShootTargetForced = false;
         this.instantBallsForced = false;
         this.breakCompleted = false;
+        this.dailyBreakShotTaken = false;
+        this.dailyBreakCollisionDetected = false;
     }
 
     if(AI_ON && AI_PLAYER_NUM === 0){
@@ -630,33 +812,62 @@ GameWorld.prototype.handleBreakComplete = function() {
         return;
     }
     
-    console.log("🎯 Break complete! Balls pocketed:", this.ballsPocketedInBreak);
+    console.log("🎯 Break complete! Checking balls pocketed...");
     
-    // Mark break as completed
-    this.breakCompleted = true;
-    this.miniGameActive = false;
+    // Check if this is daily break mode
+    const isDailyBreak = localStorage.getItem('dailyBreakMode') === 'true';
     
-    // Simple reset - no complex logic
-    console.log("✅ Break game complete!");
-};
-        console.log("⚠️ Not enough balls pocketed, FORCING more balls now!");
-        this.forceMinimumBalls();
+    if (!isDailyBreak) {
+        // ENSURE MINIMUM BALLS ARE FORCED (CLIENT REQUIREMENT) - only for non-daily break
+        if (this.ballsPocketedInBreak < 2) {
+            console.log("⚠️ Not enough balls pocketed, FORCING more balls now!");
+            this.forceMinimumBalls();
+        }
     }
     
-    console.log("� Final balls pocketed in break:", this.ballsPocketedInBreak);
+    console.log(" Final balls pocketed in break:", this.ballsPocketedInBreak);
     
     // Mark break as completed
     this.breakCompleted = true;
     this.miniGameActive = false;
+    localStorage.setItem('dailyBreakMode', 'false');
     
     if (!Game.miniGames) {
         Game.miniGames = new MiniGames();
     }
     
-    // SIMPLE BREAK COMPLETION - NO ERRORS!
-    console.log("🎉 Break complete! Balls pocketed:", this.ballsPocketedInBreak);
+    // Show custom result for daily break with points
+    if (isDailyBreak && this.dailyBreakPoints && this.dailyBreakBallsScored) {
+        console.log("🎉 Showing daily break result");
+        this.showDailyBreakResult(this.dailyBreakBallsScored, this.dailyBreakPoints);
+        
+        // Reset game after showing result
+        setTimeout(() => {
+            this.reset();
+            this.ballsPocketedInBreak = 0;
+            this.dailyBreakPoints = 0;
+            this.dailyBreakBallsScored = 0;
+            Game.initMenus(false);
+            Game.mainMenu.active = true;
+            GAME_STOPPED = true;
+            console.log("🔄 Returned to main menu after daily break");
+        }, 4000);
+        return;
+    }
     
-    // Just reset the stick - no complex mini-game logic
+    // Enhanced break analysis (for non-daily break modes)
+    const ballsRemaining = this.analyzeBallsAfterBreak();
+    const result = Game.miniGames.completeBreakShot(this.ballsPocketedInBreak);
+    
+    console.log("🎮 Mini game result:", result);
+    
+    // Add detailed ball analysis to result
+    result.ballAnalysis = ballsRemaining;
+    
+    // Show result overlay
+    this.showBreakResult(result);
+    
+    // Explicitly reset cue stick to starting position
     console.log("🎯 Resetting cue stick after break");
     this.stick.reset();
     this.stick.position = this.whiteBall.position.copy();
@@ -674,6 +885,68 @@ GameWorld.prototype.handleBreakComplete = function() {
     GAME_STOPPED = true;
     
     console.log("🔄 Immediately returned to initial screen");
+};
+
+GameWorld.prototype.forceDailyBreakBalls = function() {
+    console.log("🎲🎲🎲 FORCE DAILY BREAK BALLS CALLED! 🎲🎲🎲");
+
+    const odds = [
+        { balls: 8, weight: 3, points: 800 },   // 3% - 800 points
+        { balls: 6, weight: 7, points: 500 },   // 7% - 500 points
+        { balls: 5, weight: 15, points: 300 },  // 15% - 300 points
+        { balls: 4, weight: 20, points: 200 },  // 20% - 200 points
+        { balls: 2, weight: 25, points: 100 },  // 25% - 100 points
+        { balls: 1, weight: 30, points: 50 }    // 30% - 50 points
+    ];
+
+    const totalWeight = odds.reduce((sum, o) => sum + o.weight, 0);
+    const random = Math.random() * totalWeight;
+
+    let selectedOdd = odds[odds.length - 1]; // Default to 1 ball
+    let cumulativeWeight = 0;
+    for(const odd of odds){
+        cumulativeWeight += odd.weight;
+        if(random < cumulativeWeight){
+            selectedOdd = odd;
+            break;
+        }
+    }
+    
+    const ballsToForce = selectedOdd.balls;
+    const pointsToAward = selectedOdd.points;
+    
+    console.log(`🎯 Daily Break Result: ${ballsToForce} balls = ${pointsToAward} points!`);
+    console.log(`📊 Total balls available:`, this.balls.length);
+
+    // Store the points for the completion message
+    this.dailyBreakPoints = pointsToAward;
+    this.dailyBreakBallsScored = ballsToForce;
+
+    // Reset counter - it will be incremented as balls actually enter pockets
+    this.ballsPocketedInBreak = 0;
+
+    // Get balls that can be pocketed (not the cue ball)
+    const availableBalls = [];
+    for (let i = 0; i < this.balls.length; i++) {
+        const ball = this.balls[i];
+        if (ball !== this.whiteBall && ball.visible && !ball.inHole) {
+            availableBalls.push(ball);
+        }
+    }
+    
+    console.log(`📊 Available balls to pocket:`, availableBalls.length);
+    
+    // Force the selected number of balls to ROLL toward pockets (not instant)
+    for (let i = 0; i < ballsToForce && i < availableBalls.length; i++) {
+        const ballIndex = Math.floor(Math.random() * availableBalls.length);
+        const ballToPocket = availableBalls.splice(ballIndex, 1)[0];
+        
+        console.log(`⚡ Sending ball #${i+1} to pocket (will increment counter when it arrives)...`);
+        this.forceBallIntoPocket(ballToPocket);
+    }
+
+    console.log(`🚀 Daily Break balls rolling to pockets! Will count as they enter...`);
+    return ballsToForce; // Return expected count, actual count will update as balls enter
 };
 
 // INSTANT BALL FORCING - No delays, no complex conditions
@@ -727,8 +1000,7 @@ GameWorld.prototype.forceBallsInstantly = function() {
     // Complete the break after forcing balls
     setTimeout(() => {
         if (this.isBreakMode) {
-            console.log("🔄 Break forcing complete - no complex handling needed");
-            // DISABLED: this.handleBreakComplete();
+            this.handleBreakComplete();
         }
     }, 1000);
 };
@@ -768,17 +1040,20 @@ GameWorld.prototype.applyGuaranteedBallPocketing = function() {
     
     // Force the guaranteed number of balls to be pocketed
     const ballsToPocket = Math.min(ballsToForce, availableBalls.length);
+    
+    // Reset counter - it will increment as balls actually reach pockets
+    this.ballsPocketedInBreak = 0;
+    
     for (let i = 0; i < ballsToPocket; i++) {
         const randomIndex = Math.floor(Math.random() * availableBalls.length);
         const ballToPocket = availableBalls.splice(randomIndex, 1)[0];
         
-        // Force the ball into a pocket
+        // Force the ball to ROLL into a pocket (counter will increment when it arrives)
         this.forceBallIntoPocket(ballToPocket);
-        console.log("✅ Forced ball", ballToPocket.color || ballToPocket.number, "into pocket");
+        console.log("✅ Sending ball", ballToPocket.color || ballToPocket.number, "to pocket");
     }
     
-    // Update the break counter to match forced balls
-    this.ballsPocketedInBreak = ballsToPocket;
+    console.log(`🚀 Sent ${ballsToPocket} balls rolling to pockets! Counter will update as they arrive.`);
     
     return ballsToPocket;
 };
@@ -843,28 +1118,68 @@ GameWorld.prototype.forceBallIntoPocket = function(ball) {
     
     const randomPocket = pockets[Math.floor(Math.random() * pockets.length)];
     
-    // Move ball to pocket and mark as pocketed
-    ball.position.x = randomPocket.x;
-    ball.position.y = randomPocket.y;
-    ball.inHole = true;
-    ball.visible = false;
-    ball.velocity = Vector2.zero;
+    // Calculate direction to pocket
+    const direction = new Vector2(randomPocket.x - ball.position.x, randomPocket.y - ball.position.y);
+    const distance = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
     
-    // Increment the counter and trigger the tracking
-    this.ballsPocketedInBreak++;
-    
-    // Play sound effect if available
-    if (Game.sound && SOUND_ON && typeof sounds !== 'undefined' && sounds.hole) {
-        try {
-            const holeSound = sounds.hole.cloneNode(true);
-            holeSound.volume = 0.3;
-            holeSound.play();
-        } catch (error) {
-            console.log("Sound effect error:", error);
-        }
+    // Normalize direction and set velocity (make balls roll toward pocket)
+    if (distance > 0) {
+        direction.x = (direction.x / distance) * 400; // Increased speed to 400
+        direction.y = (direction.y / distance) * 400;
     }
     
-    console.log("⚡ Forced ball into pocket! Total now:", this.ballsPocketedInBreak);
+    ball.velocity = direction;
+    ball.moving = true;
+    ball.visible = true; // Keep visible while rolling
+    
+    // DO NOT increment counter here - only increment when ball actually reaches the pocket!
+    
+    console.log(`⚡ Ball rolling to pocket at (${randomPocket.x}, ${randomPocket.y})`);
+    console.log(`   Current position: (${ball.position.x.toFixed(0)}, ${ball.position.y.toFixed(0)})`);
+    console.log(`   Velocity set to: (${ball.velocity.x.toFixed(0)}, ${ball.velocity.y.toFixed(0)})`);
+    
+    // Monitor ball and pocket it when it gets close
+    let checkCount = 0;
+    const maxChecks = 60; // 3 seconds max
+    const checkInterval = setInterval(() => {
+        checkCount++;
+        const distToPocket = Math.sqrt(
+            Math.pow(ball.position.x - randomPocket.x, 2) + 
+            Math.pow(ball.position.y - randomPocket.y, 2)
+        );
+        
+        if (checkCount % 10 === 0) {
+            console.log(`   Distance to pocket: ${distToPocket.toFixed(0)}, Ball position: (${ball.position.x.toFixed(0)}, ${ball.position.y.toFixed(0)})`);
+        }
+        
+        if (distToPocket < 40 || !ball.moving || checkCount >= maxChecks) {
+            clearInterval(checkInterval);
+            
+            // NOW increment the counter when ball actually enters pocket
+            this.ballsPocketedInBreak++;
+            
+            // Now pocket the ball
+            ball.position.x = randomPocket.x;
+            ball.position.y = randomPocket.y;
+            ball.inHole = true;
+            ball.visible = false;
+            ball.moving = false;
+            ball.velocity = Vector2.zero;
+            
+            // Play sound effect
+            if (Game.sound && SOUND_ON && typeof sounds !== 'undefined' && sounds.hole) {
+                try {
+                    const holeSound = sounds.hole.cloneNode(true);
+                    holeSound.volume = 0.5;
+                    holeSound.play();
+                } catch (error) {
+                    console.log("Sound effect error:", error);
+                }
+            }
+            
+            console.log("✅ Ball entered pocket successfully! Total pocketed:", this.ballsPocketedInBreak);
+        }
+    }, 50); // Check every 50ms
 };
 
 GameWorld.prototype.analyzeBallsAfterBreak = function() {
@@ -977,6 +1292,143 @@ GameWorld.prototype.detectBallClusters = function(ballPositions) {
     return clusteredBalls;
 };
 
+GameWorld.prototype.showDailyBreakResult = function(ballsScored, pointsAwarded) {
+    console.log(`🎉 Showing Daily Break Result: ${ballsScored} balls = ${pointsAwarded} points`);
+    
+    // HIDE ALL GAME ELEMENTS - POOL TABLE AND CONTAINERS
+    const gameCanvas = document.getElementById('gameArea');
+    const screenElement = document.getElementById('screen');
+    const gameCanvasContainer = document.getElementById('game-canvas-container');
+    
+    if (gameCanvas) {
+        gameCanvas.style.display = 'none';
+        console.log("🎱 Pool table canvas hidden");
+    }
+    if (screenElement) {
+        screenElement.style.display = 'none';
+        console.log("🎱 Screen element hidden");
+    }
+    if (gameCanvasContainer) {
+        gameCanvasContainer.style.display = 'none';
+        console.log("🎱 Game container hidden");
+    }
+    
+    // Create overlay with SOLID BLACK background
+    const overlay = document.createElement('div');
+    overlay.id = 'daily-break-result-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: #000000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 99999;
+    `;
+    
+    const content = document.createElement('div');
+    content.style.cssText = `
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        color: white;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+        max-width: 500px;
+        animation: slideIn 0.5s ease-out;
+    `;
+    
+    content.innerHTML = `
+        <h1 style="margin: 0 0 20px 0; font-size: 36px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
+            🎯 DAILY BREAK!
+        </h1>
+        <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; margin-bottom: 20px;">
+            <div style="font-size: 18px; margin-bottom: 10px; opacity: 0.9;">Balls Scored</div>
+            <div style="font-size: 64px; font-weight: bold; color: #FFD700; text-shadow: 3px 3px 6px rgba(0,0,0,0.5);">
+                ${ballsScored}
+            </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; margin-bottom: 20px;">
+            <div style="font-size: 18px; margin-bottom: 10px; opacity: 0.9;">Points Earned</div>
+            <div style="font-size: 72px; font-weight: bold; color: #00FF88; text-shadow: 3px 3px 6px rgba(0,0,0,0.5);">
+                +${pointsAwarded}
+            </div>
+        </div>
+        <div style="font-size: 14px; opacity: 0.8; margin-top: 20px;">
+            ${this.getDailyBreakMessage(ballsScored)}
+        </div>
+    `;
+    
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
+    
+    // Add points to user's total
+    console.log("💰💰💰 ADDING POINTS TO TOTAL 💰💰💰");
+    console.log("   Points to award:", pointsAwarded);
+    console.log("   Game object exists:", typeof Game !== 'undefined');
+    console.log("   Game.dailyRewards exists:", typeof Game !== 'undefined' && !!Game.dailyRewards);
+    
+    if (typeof Game !== 'undefined' && Game.dailyRewards) {
+        const oldTotal = Game.dailyRewards.totalTokens;
+        console.log("   BEFORE: totalTokens =", oldTotal);
+        
+        // Add the points
+        Game.dailyRewards.totalTokens = oldTotal + pointsAwarded;
+        
+        // Save to localStorage
+        localStorage.setItem('totalTokens', Game.dailyRewards.totalTokens.toString());
+        
+        console.log("   AFTER: totalTokens =", Game.dailyRewards.totalTokens);
+        console.log("   Calculation:", oldTotal, "+", pointsAwarded, "=", Game.dailyRewards.totalTokens);
+        console.log("   localStorage value:", localStorage.getItem('totalTokens'));
+        
+        // Force update the header display
+        const tokenDisplay = document.getElementById('token-balance');
+        console.log("   Token display element found:", !!tokenDisplay);
+        
+        if (tokenDisplay) {
+            const newDisplayValue = Math.round(Game.dailyRewards.totalTokens) + ' P';
+            console.log("   Setting display to:", newDisplayValue);
+            tokenDisplay.textContent = newDisplayValue;
+            console.log("   Display now shows:", tokenDisplay.textContent);
+            
+            // Double check it updated
+            setTimeout(() => {
+                console.log("   Display check after 100ms:", document.getElementById('token-balance').textContent);
+            }, 100);
+        } else {
+            console.error("❌ Token display element 'token-balance' not found in DOM!");
+        }
+    } else {
+        console.error("❌ Cannot add points - Game.dailyRewards not initialized!");
+        console.error("   Game exists:", typeof Game !== 'undefined');
+        if (typeof Game !== 'undefined') {
+            console.error("   Game.dailyRewards:", Game.dailyRewards);
+        }
+    }
+    
+    // Remove overlay after 3 seconds - don't show game elements again
+    setTimeout(() => {
+        if (overlay.parentNode) {
+            document.body.removeChild(overlay);
+        }
+        // Keep game elements hidden - user will return to menu
+        console.log("✅ Overlay removed, game elements remain hidden");
+    }, 3000);
+};
+
+GameWorld.prototype.getDailyBreakMessage = function(ballsScored) {
+    if (ballsScored === 8) return "🏆 LEGENDARY! Maximum balls scored!";
+    if (ballsScored === 6) return "🌟 INCREDIBLE! Amazing break!";
+    if (ballsScored === 5) return "⚡ EXCELLENT! Great shot!";
+    if (ballsScored === 4) return "🔥 GREAT! Well played!";
+    if (ballsScored === 2) return "💪 GOOD! Nice break!";
+    return "👍 Keep practicing!";
+};
+
 GameWorld.prototype.showBreakResult = function(result) {
     // Enhanced result display with odds information
     let message = "";
@@ -1059,19 +1511,40 @@ GameWorld.prototype.handleAimShootComplete = function() {
     this.miniGameActive = false;
     this.aimShootCompleted = true;
     
-    // CLIENT REQUIREMENT: ALWAYS FORCE BLACK BALL INTO HOLE
-    console.log("🎯 AIM & SHOOT COMPLETION - FORCING BLACK BALL!");
+    // CLIENT REQUIREMENT: Ball rolls slowly into hole, then show points
+    console.log("🎯 AIM & SHOOT SHOT DETECTED - FORCING BALL TO ROLL SLOWLY!");
     
-    // AGGRESSIVE BLACK BALL FORCING
+    // FORCE BALL TO ROLL SLOWLY INTO HOLE
     this.forceBlackBallInHole();
     
-    // Calculate final result (ALWAYS 1 ball - the black ball)
-    const ballsPotted = 1; // GUARANTEED - black ball always goes in
-    console.log("✅ GUARANTEED RESULT: Black ball scored =", ballsPotted, "(ALWAYS successful)");
+    // Note: Completion will be triggered by completeAimShootShot() after ball enters hole
+};
+
+GameWorld.prototype.completeAimShootShot = function() {
+    console.log("🎯 AIM & SHOOT - Ball entered hole, calculating rewards...");
     
-    // Higher base reward since it's guaranteed success
-    const baseReward = 25; 
-    const totalReward = baseReward + (ballsPotted * 20); // Total: 45 tokens guaranteed
+    // Random rewards for each shot (requirement #6)
+    const rewardOptions = [
+        { points: 50, probability: 0.30 },   // 30% chance - 50 points
+        { points: 100, probability: 0.25 },  // 25% chance - 100 points
+        { points: 150, probability: 0.20 },  // 20% chance - 150 points
+        { points: 200, probability: 0.15 },  // 15% chance - 200 points
+        { points: 300, probability: 0.10 }   // 10% chance - 300 points
+    ];
+    
+    const random = Math.random();
+    let cumulativeProbability = 0;
+    let selectedReward = rewardOptions[0];
+    
+    for (const reward of rewardOptions) {
+        cumulativeProbability += reward.probability;
+        if (random <= cumulativeProbability) {
+            selectedReward = reward;
+            break;
+        }
+    }
+    
+    const totalReward = selectedReward.points;
     
     // Add to daily rewards
     if (typeof DailyReward !== 'undefined') {
@@ -1080,39 +1553,135 @@ GameWorld.prototype.handleAimShootComplete = function() {
     }
     // Add to wallet rewards if connected
     if (typeof SolanaWalletManager !== 'undefined') {
-        SolanaWalletManager.addPendingReward(totalReward, "Aim & Shoot - Black Ball Guaranteed");
+        SolanaWalletManager.addPendingReward(totalReward, "Aim & Shoot");
     }
     
-    // Log guaranteed success result
-    console.log("=== AIM & SHOOT GUARANTEED BLACK BALL RESULT ===");
-    console.log("Black Ball Scored:", ballsPotted, "(GUARANTEED)");
-    console.log("Reward:", totalReward, "tokens");
-    console.log("Status: SUCCESS (BLACK BALL ALWAYS SCORES)");
-    console.log("Resetting to INITIAL table state...");
+    // Increment attempt counter
+    const currentAttempts = parseInt(localStorage.getItem('aimShootAttempts') || '0');
+    const newAttempts = currentAttempts + 1;
+    localStorage.setItem('aimShootAttempts', newAttempts.toString());
     
-    // COMPLETE RESET TO INITIAL STATE
+    console.log(`✅ Shot ${newAttempts}/3 completed! Reward: ${totalReward} points`);
+    
+    // Show points display (requirement #2)
+    this.showAimShootReward(totalReward, newAttempts);
+    
+    // Auto-reset after showing points (requirements #2 and #3)
+    setTimeout(() => {
+        if (newAttempts >= 3) {
+            // After 3rd shot, show completion message (requirement #4)
+            this.showAimShoot24HourMessage();
+        } else {
+            // Reset for next shot (requirement #3)
+            this.resetAimShootForNextShot();
+        }
+    }, 2500); // Show points for 2.5 seconds
+};
+
+GameWorld.prototype.showAimShootReward = function(points, shotNumber) {
+    console.log(`🎉 Displaying reward: ${points} points for shot ${shotNumber}/3`);
+    
+    // Create reward overlay
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '50%';
+    overlay.style.left = '50%';
+    overlay.style.transform = 'translate(-50%, -50%)';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+    overlay.style.color = '#FFD700';
+    overlay.style.padding = '40px 60px';
+    overlay.style.borderRadius = '15px';
+    overlay.style.fontSize = '32px';
+    overlay.style.fontWeight = 'bold';
+    overlay.style.textAlign = 'center';
+    overlay.style.zIndex = '10000';
+    overlay.style.border = '3px solid #FFD700';
+    overlay.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 20px;">🎯</div>
+        <div style="margin-bottom: 15px;">Shot ${shotNumber}/3</div>
+        <div style="font-size: 56px; color: #00FF00; margin: 20px 0;">+${points}</div>
+        <div style="font-size: 24px; color: #FFF;">Points Earned!</div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Remove overlay after delay
+    setTimeout(() => {
+        document.body.removeChild(overlay);
+    }, 2400);
+};
+
+GameWorld.prototype.showAimShoot24HourMessage = function() {
+    console.log("🎯 All 3 shots completed! Showing 24-hour message...");
+    
+    // Create completion message overlay
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '50%';
+    overlay.style.left = '50%';
+    overlay.style.transform = 'translate(-50%, -50%)';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+    overlay.style.color = '#FFF';
+    overlay.style.padding = '50px 70px';
+    overlay.style.borderRadius = '20px';
+    overlay.style.fontSize = '28px';
+    overlay.style.fontWeight = 'bold';
+    overlay.style.textAlign = 'center';
+    overlay.style.zIndex = '10000';
+    overlay.style.border = '3px solid #4CAF50';
+    overlay.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 25px;">✅</div>
+        <div style="margin-bottom: 20px; color: #4CAF50;">Congratulations!</div>
+        <div style="font-size: 24px; margin-bottom: 30px;">You have completed 3 shots.</div>
+        <div style="font-size: 22px; color: #FFD700;">Please come back in 24 hours to play again.</div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
+    // Return to menu after showing message
+    setTimeout(() => {
+        document.body.removeChild(overlay);
+        this.returnToMainMenu();
+    }, 4000);
+};
+
+GameWorld.prototype.resetAimShootForNextShot = function() {
+    console.log("🔄 Resetting for next Aim & Shoot shot...");
+    
+    // Reset game state
     this.isAimShootMode = false;
     this.miniGameActive = false;
     this.aimShootCompleted = false;
-    this.aimShootTargetForced = false; // Reset for next game
+    this.aimShootTargetForced = false;
+    this.aimShootShotTriggered = false; // Reset shot trigger flag
+    
+    // Restart Aim & Shoot mode for next shot
+    setTimeout(() => {
+        if (typeof Game !== 'undefined' && Game.startAimShootGame) {
+            Game.startAimShootGame();
+        }
+    }, 100);
+};
+
+GameWorld.prototype.returnToMainMenu = function() {
+    console.log("🏠 Returning to main menu...");
+    
+    // Reset all game state
+    this.isAimShootMode = false;
+    this.miniGameActive = false;
+    this.aimShootCompleted = false;
+    this.aimShootTargetForced = false;
+    this.aimShootShotTriggered = false; // Reset shot trigger flag
     this.isBreakMode = false;
     this.gameOver = false;
-    this.ballsPocketedInBreak = 0;
     
-    // Reset all balls to initial positions and make them visible
-    for (var i = 0; i < this.balls.length; i++) {
-        this.balls[i].reset();
-        this.balls[i].visible = true;
-        this.balls[i].inHole = false;
-    }
-    
-    // Reset cue stick to initial position
-    this.stick.reset();
-    this.stick.position = { x: 413, y: 413 };
-    
-    // Return to main menu immediately
-    if (typeof showMobileInterface === 'function') {
-        showMobileInterface();
+    // Reset game
+    if (typeof Game !== 'undefined') {
+        Game.initMenus(false);
+        if (Game.mainMenu) {
+            Game.mainMenu.active = true;
+        }
+        GAME_STOPPED = true;
     }
 };
 

@@ -28,6 +28,9 @@ DailyRewards.prototype.performDailyCheckIn = function() {
         };
     }
     
+    // Set daily break mode
+    localStorage.setItem('dailyBreakMode', 'true');
+
     const today = new Date().toDateString();
     const reward = this.dailyReward;
     
