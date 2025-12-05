@@ -1,6 +1,8 @@
 "use strict";
 
 function AimShootMode() {
+    // Call parent constructor
+    GameWorld.call(this);
 
     this.whiteBallStartingPosition = new Vector2(413, 400);
 
@@ -22,6 +24,10 @@ function AimShootMode() {
     this.gamePolicy = new GamePolicy();
 }
 
+// Inherit from GameWorld
+AimShootMode.prototype = Object.create(GameWorld.prototype);
+AimShootMode.prototype.constructor = AimShootMode;
+
 AimShootMode.prototype.getBall = function(color){
     if(color === Color.white){
         return this.whiteBall;
@@ -33,48 +39,51 @@ AimShootMode.prototype.getBall = function(color){
 
 AimShootMode.prototype.handleInput = function (delta) {
     this.stick.handleInput(delta);
+    
+    // AIM & SHOOT MODE: Mark that shot was taken based on turnPlayed or ball movement
+    if (!this.aimShootShotTriggered) {
+        if (Game.policy.turnPlayed) {
+            this.aimShootShotTriggered = true;
+            console.log("🎯🎯🎯 AIM & SHOOT: Shot detected via turnPlayed! Black ball will be forced into hole when balls stop.");
+        } else if (this.whiteBall.moving) {
+            this.aimShootShotTriggered = true;
+            console.log("🎯🎯🎯 AIM & SHOOT: Shot detected via whiteBall.moving! Black ball will be forced into hole when balls stop.");
+        }
+    }
 };
 
 AimShootMode.prototype.update = function (delta) {
+    // Handle input first
+    this.handleInput(delta);
+    
     this.stick.update(delta);
 
     // Handle collision between white ball and black ball
-    this.handleCollision(this.whiteBall, this.blackBall, delta);
+    for (var i = 0; i < this.balls.length; i++) {
+        for (var j = i + 1; j < this.balls.length; j++) {
+            GameWorld.prototype.handleCollision.call(this, this.balls[i], this.balls[j], delta);
+        }
+    }
 
     // Update both balls
-    this.whiteBall.update(delta);
-    this.blackBall.update(delta);
+    for (var i = 0; i < this.balls.length; i++) {
+        this.balls[i].update(delta);
+    }
 
-    this.stick.update(delta);
-    this.handleInput(delta);
+    // Debug logging
+    const ballsMoving = this.ballsMoving();
+    if (this.aimShootShotTriggered && !this.aimShootCompleted) {
+        console.log(`🔍 AIM SHOOT UPDATE: ballsMoving=${ballsMoving}, shotTriggered=${this.aimShootShotTriggered}, completed=${this.aimShootCompleted}`);
+    }
+
+    // AIM & SHOOT: When balls stop moving, force black ball into hole
+    if (!ballsMoving && this.aimShootShotTriggered && !this.aimShootCompleted) {
+        console.log("🎯🎯🎯 AIM & SHOOT: Balls stopped moving, forcing black ball into hole NOW!");
+        this.forceBlackBallInHole();
+        return;
+    }
 
     this.stick.updatePosition();
-};
-
-AimShootMode.prototype.handleCollision = function(ball1, ball2, delta){
-    if(!ball1.moving || !ball2.moving)
-        return;
-    
-    var squaredDistance = ball1.position.distanceFrom(ball2.position);
-    if(squaredDistance < BALL_SIZE){
-        
-        ball1.moving = false;
-        ball2.moving = false;
-
-        var mtd = ball2.position.subtract(ball1.position).multiplyWith(
-            (BALL_SIZE - squaredDistance) / squaredDistance);
-
-        ball1.position = ball1.position.subtract(mtd.multiplyWith(1/2));
-        ball2.position = ball2.position.add(mtd.multiplyWith(1/2));
-
-        var velocity1 = ball1.velocity;
-        var velocity2 = ball2.velocity;
-        var newVelocity1 = velocity1.subtract(velocity2);
-        var newVelocity2 = velocity2.subtract(velocity1);
-
-        ball1.velocity = newVelocity1.multiplyWith(0.00001);
-        ball2.velocity = newVelocity2.multiplyWith(0.00001);
-    }
 };
 
 AimShootMode.prototype.draw = function () {

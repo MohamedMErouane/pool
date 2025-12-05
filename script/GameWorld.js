@@ -76,6 +76,8 @@ function GameWorld() {
     this.ballsForced = false; // Simple flag for guaranteed ball forcing
     this.dailyBreakShotTaken = false; // Flag for daily break shot taken
     this.dailyBreakCollisionDetected = false; // Flag for first collision detection
+    this.dailyBreakCollisionTriggered = false; // Flag for shot trigger
+    this.dailyBreakBallsAlreadyForced = false; // Prevent double forcing
     
     // CLIENT SPECIFICATION: 3-shot system tracking
     this.dailyBreakAttempts = parseInt(localStorage.getItem('dailyBreakAttempts') || '0');
@@ -312,42 +314,68 @@ GameWorld.prototype.forceBlackBallInHole = function() {
         }
     }
     
-    // Find closest pocket
-    const pockets = [
-        { x: 62, y: 62 },     // Top-left
-        { x: 400, y: 50 },    // Top-center
-        { x: 738, y: 62 },    // Top-right
-        { x: 62, y: 438 },    // Bottom-left
-        { x: 400, y: 450 },   // Bottom-center
-        { x: 738, y: 438 }    // Bottom-right
-    ];
-    
-    // Find closest pocket to ball
-    let closestPocket = pockets[0];
-    let minDistance = Infinity;
-    for (let pocket of pockets) {
-        const dist = Math.sqrt(
-            Math.pow(targetBall.position.x - pocket.x, 2) + 
-            Math.pow(targetBall.position.y - pocket.y, 2)
-        );
-        if (dist < minDistance) {
-            minDistance = dist;
-            closestPocket = pocket;
-        }
-    }
-    
+    // TABLE GEOMETRY (use policy if available, otherwise sane defaults)
+    const leftBorderX   = (Game.policy && Game.policy.leftBorderX)   || 57;
+    const rightBorderX  = (Game.policy && Game.policy.rightBorderX)  || 1383;
+    const topBorderY    = (Game.policy && Game.policy.topBorderY)    || 57;
+    const bottomBorderY = (Game.policy && Game.policy.bottomBorderY) || 768;
+
+    // Define a fixed target pocket so the path is identical every time.
+    // We pick the TOP‑RIGHT corner pocket for a nice \"bank\" style shot.
+    const targetPocket = {
+        x: rightBorderX - 15,
+        y: topBorderY + 15
+    };
+
     console.log(`🎯 BLACK BALL at (${targetBall.position.x.toFixed(0)}, ${targetBall.position.y.toFixed(0)})`);
-    console.log(`🎯 Closest pocket at (${closestPocket.x}, ${closestPocket.y})`);
-    console.log(`📏 Distance to pocket: ${minDistance.toFixed(0)} pixels`);
-    
+    console.log(`🎯 Using fixed target pocket at (${targetPocket.x.toFixed(0)}, ${targetPocket.y.toFixed(0)})`);
+
+    // === BANK SHOT TRAJECTORY ===
+    // We build a piecewise-linear path:
+    //  1) From current position → right cushion
+    //  2) Slide up along right cushion → near top cushion (corner)
+    //  3) From corner → into target pocket
+    //
+    // This guarantees that every Aim & Shoot shot visually hits the cushions
+    // (corners) on the way to the pocket, regardless of the actual physics.
+
+    const cushionOffset = 25; // how far inside the cushions we travel
+
+    // Waypoint 1: hit the right cushion horizontally from current position
+    const waypoint1 = {
+        x: rightBorderX - cushionOffset,
+        y: targetBall.position.y
+    };
+
+    // Clamp waypoint1 inside vertical table bounds
+    waypoint1.y = Math.max(topBorderY + cushionOffset, Math.min(bottomBorderY - cushionOffset, waypoint1.y));
+
+    // Waypoint 2: move up along the right cushion toward the top corner
+    const waypoint2 = {
+        x: waypoint1.x,
+        y: topBorderY + cushionOffset
+    };
+
+    // Waypoint 3: final pocket position
+    const waypoint3 = {
+        x: targetPocket.x,
+        y: targetPocket.y
+    };
+
+    const path = [waypoint1, waypoint2, waypoint3];
+    let currentWaypointIndex = 0;
+
+    console.log("🧭 Aim & Shoot path waypoints:", path);
+
     // Store reference for use in interval
     const gameWorld = this;
     
-    // Mark ball as being forced
+    // Mark ball as being forced and set completed flag to prevent re-triggering
     targetBall.isBeingForced = true;
     targetBall.friction = 0;
+    this.aimShootCompleted = true; // Prevent re-triggering while forcing
     
-    console.log(`✅ Starting GUARANTEED forced roll to pocket...`);
+    console.log(`✅ Starting GUARANTEED forced bank‑shot roll to pocket...`);
     
     // AGGRESSIVE FORCING: Move ball directly toward pocket every frame
     let checkCount = 0;
@@ -361,22 +389,35 @@ GameWorld.prototype.forceBlackBallInHole = function() {
             return;
         }
         
-        // Calculate current distance to pocket
-        const dx = closestPocket.x - targetBall.position.x;
-        const dy = closestPocket.y - targetBall.position.y;
-        const distToPocket = Math.sqrt(dx * dx + dy * dy);
+        // Current waypoint we are steering toward
+        const currentWaypoint = path[currentWaypointIndex];
+
+        // Calculate distance to current waypoint
+        const dx = currentWaypoint.x - targetBall.position.x;
+        const dy = currentWaypoint.y - targetBall.position.y;
+        const distToWaypoint = Math.sqrt(dx * dx + dy * dy);
         
         if (checkCount % 20 === 0) {
-            console.log(`📍 Count: ${checkCount}, Distance: ${distToPocket.toFixed(0)}px, Ball pos: (${targetBall.position.x.toFixed(0)}, ${targetBall.position.y.toFixed(0)})`);
+            console.log(
+                `📍 Count: ${checkCount}, Waypoint ${currentWaypointIndex + 1}/${path.length}, ` +
+                `Dist: ${distToWaypoint.toFixed(0)}px, Ball pos: (${targetBall.position.x.toFixed(0)}, ${targetBall.position.y.toFixed(0)})`
+            );
         }
-        
-        // If close enough, pocket the ball immediately
-        if (distToPocket < 50) {
+
+        // If we are close to the current waypoint, advance to the next one
+        if (distToWaypoint < 10 && currentWaypointIndex < path.length - 1) {
+            currentWaypointIndex++;
+            console.log(`➡️ Switching to waypoint ${currentWaypointIndex + 1}/${path.length}`);
+            return;
+        }
+
+        // If we reached the final waypoint (pocket), pocket the ball
+        if (distToWaypoint < 20 && currentWaypointIndex === path.length - 1) {
             clearInterval(checkInterval);
             
             // POCKET THE BALL
             targetBall.isBeingForced = false;
-            targetBall.position = new Vector2(closestPocket.x, closestPocket.y);
+            targetBall.position = new Vector2(currentWaypoint.x, currentWaypoint.y);
             targetBall.inHole = true;
             targetBall.visible = false;
             targetBall.moving = false;
@@ -406,10 +447,10 @@ GameWorld.prototype.forceBlackBallInHole = function() {
             return;
         }
         
-        // FORCE MOVEMENT: Directly update position toward pocket
+        // FORCE MOVEMENT: Directly update position toward current waypoint
         const speed = 3; // Pixels per frame (50ms = 60 pixels/second)
-        const stepX = (dx / distToPocket) * speed;
-        const stepY = (dy / distToPocket) * speed;
+        const stepX = (dx / distToWaypoint) * speed;
+        const stepY = (dy / distToWaypoint) * speed;
         
         targetBall.position = new Vector2(
             targetBall.position.x + stepX,
@@ -459,28 +500,27 @@ GameWorld.prototype.handleInput = function (delta) {
     if (localStorage.getItem('dailyBreakMode') === 'true' && !this.dailyBreakCollisionTriggered) {
         if (this.stick.shot) {
             this.dailyBreakCollisionTriggered = true;
-            console.log("💥 Daily Break Shot Triggered! Forcing outcome now.");
+            this.ballsForced = true; // Mark that shot was taken
+            console.log("💥 Daily Break Shot Triggered! Balls will roll into pockets...");
 
-            // Immediately force the balls into the pockets
+            // Force the selected balls to roll into pockets (animated)
             this.forceDailyBreakBalls();
 
-            // Make the other balls scatter for a visual effect
-            this.balls.forEach(ball => {
-                if (ball !== this.whiteBall && !ball.inHole) {
-                    const randomVelocity = new Vector2(Math.random() * 2000 - 1000, Math.random() * 2000 - 1000);
-                    ball.velocity = randomVelocity;
-                    ball.moving = true;
-                }
-            });
+            // DON'T scatter balls - let them roll naturally into pockets
+            // The forceBallIntoPocket function handles the animation
 
-            // Stop the white ball
-            this.whiteBall.stop();
+            // Stop the white ball after initial movement
+            setTimeout(() => {
+                this.whiteBall.velocity = new Vector2(0, 0);
+                this.whiteBall.moving = false;
+            }, 500);
+            
             this.stick.shot = false; // Prevent normal shot logic
 
-            // Complete the break after a short visual delay
+            // Complete the break after balls have time to roll into pockets
             setTimeout(() => {
                 this.handleBreakComplete();
-            }, 800); // 800ms for the scatter effect to be visible
+            }, 3500); // 3.5 seconds for balls to animate into pockets
 
             return; // Bypass normal input handling
         }
@@ -522,7 +562,8 @@ GameWorld.prototype.update = function (delta) {
 
     if(!this.ballsMoving() && AI.finishedSession){
         // Check if in break mode and shot is complete
-        if (this.isBreakMode && this.miniGameActive) {
+        // IMPORTANT: Only complete break if a shot was actually taken (ballsForced flag)
+        if (this.isBreakMode && this.miniGameActive && this.ballsForced) {
             this.handleBreakComplete();
             return;
         }
@@ -618,16 +659,21 @@ GameWorld.prototype.handleCollision = function(ball1, ball2, delta){
     var dist = ball1NewPos.distanceFrom(ball2NewPos);
 
     // Daily Break: Force balls on first collision with white ball
-    if (localStorage.getItem('dailyBreakMode') === 'true' && !this.dailyBreakCollisionDetected) {
+    // Only trigger if NOT already triggered by stick.shot handler
+    if (localStorage.getItem('dailyBreakMode') === 'true' && 
+        !this.dailyBreakCollisionDetected && 
+        !this.dailyBreakCollisionTriggered) {
         const isWhiteBallCollision = (ball1 === this.whiteBall || ball2 === this.whiteBall);
         
         if (isWhiteBallCollision && dist < BALL_SIZE) {
             this.dailyBreakCollisionDetected = true;
+            this.dailyBreakCollisionTriggered = true; // Prevent double triggering
+            this.ballsForced = true;
             console.log("💥💥💥 FIRST COLLISION DETECTED! FORCING BALLS NOW!");
             
             // Force balls to roll into pockets immediately after collision
             const ballsForced = this.forceDailyBreakBalls();
-            console.log("✅ Forced", ballsForced, "balls after collision");
+            console.log("✅ Balls rolling to pockets:", ballsForced);
             
             // Complete break after balls finish rolling (give them time to animate)
             setTimeout(() => {
@@ -706,6 +752,8 @@ GameWorld.prototype.reset = function () {
         this.breakCompleted = false;
         this.dailyBreakShotTaken = false;
         this.dailyBreakCollisionDetected = false;
+        this.dailyBreakCollisionTriggered = false;
+        this.dailyBreakBallsAlreadyForced = false;
     }
 
     if(AI_ON && AI_PLAYER_NUM === 0){
@@ -857,15 +905,18 @@ GameWorld.prototype.handleBreakComplete = function() {
     
     // Enhanced break analysis (for non-daily break modes)
     const ballsRemaining = this.analyzeBallsAfterBreak();
-    const result = Game.miniGames.completeBreakShot(this.ballsPocketedInBreak);
+    const result = Game.miniGames ? Game.miniGames.completeBreakShot(this.ballsPocketedInBreak) : null;
     
     console.log("🎮 Mini game result:", result);
     
-    // Add detailed ball analysis to result
-    result.ballAnalysis = ballsRemaining;
-    
-    // Show result overlay
-    this.showBreakResult(result);
+    // Add detailed ball analysis to result (only if result exists)
+    if (result) {
+        result.ballAnalysis = ballsRemaining;
+        // Show result overlay
+        this.showBreakResult(result);
+    } else {
+        console.log("⚠️ No mini game result, skipping result display");
+    }
     
     // Explicitly reset cue stick to starting position
     console.log("🎯 Resetting cue stick after break");
@@ -888,6 +939,13 @@ GameWorld.prototype.handleBreakComplete = function() {
 };
 
 GameWorld.prototype.forceDailyBreakBalls = function() {
+    // Prevent double-calling
+    if (this.dailyBreakBallsAlreadyForced) {
+        console.log("⚠️ Daily Break balls already forced, skipping...");
+        return 0;
+    }
+    this.dailyBreakBallsAlreadyForced = true;
+    
     console.log("🎲🎲🎲 FORCE DAILY BREAK BALLS CALLED! 🎲🎲🎲");
 
     const odds = [
@@ -1106,80 +1164,113 @@ GameWorld.prototype.resetAllBallsToTable = function() {
 };
 
 GameWorld.prototype.forceBallIntoPocket = function(ball) {
-    // Get a random pocket position
+    // Correct pocket positions for 1500x825 table (matching aim-shoot mode)
     const pockets = [
-        { x: 62, y: 62 },     // Top-left
-        { x: 400, y: 50 },    // Top-center
-        { x: 738, y: 62 },    // Top-right
-        { x: 62, y: 438 },    // Bottom-left
-        { x: 400, y: 450 },   // Bottom-center
-        { x: 738, y: 438 }    // Bottom-right
+        { x: 70, y: 70 },       // Top-left
+        { x: 720, y: 57 },      // Top-center  
+        { x: 1370, y: 70 },     // Top-right
+        { x: 70, y: 755 },      // Bottom-left
+        { x: 720, y: 768 },     // Bottom-center
+        { x: 1370, y: 755 }     // Bottom-right
     ];
     
-    const randomPocket = pockets[Math.floor(Math.random() * pockets.length)];
+    // Find NEAREST pocket (like aim-shoot mode does)
+    let nearestPocket = pockets[0];
+    let minDistance = Infinity;
+    const ballPos = ball.position;
     
-    // Calculate direction to pocket
-    const direction = new Vector2(randomPocket.x - ball.position.x, randomPocket.y - ball.position.y);
-    const distance = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
-    
-    // Normalize direction and set velocity (make balls roll toward pocket)
-    if (distance > 0) {
-        direction.x = (direction.x / distance) * 400; // Increased speed to 400
-        direction.y = (direction.y / distance) * 400;
+    for (let i = 0; i < pockets.length; i++) {
+        const dx = pockets[i].x - ballPos.x;
+        const dy = pockets[i].y - ballPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < minDistance) {
+            minDistance = distance;
+            nearestPocket = pockets[i];
+        }
     }
     
-    ball.velocity = direction;
+    console.log(`🎯 Ball will roll to NEAREST pocket: (${nearestPocket.x}, ${nearestPocket.y})`);
+    console.log(`📏 Distance: ${minDistance.toFixed(0)} pixels`);
+    
+    // Calculate direction to pocket
+    const dx = nearestPocket.x - ballPos.x;
+    const dy = nearestPocket.y - ballPos.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Normalize direction and set velocity for smooth rolling
+    const rollSpeed = 250; // Reasonable speed for visible animation
+    const directionX = (dx / distance) * rollSpeed;
+    const directionY = (dy / distance) * rollSpeed;
+    
+    // Set ball properties for forcing
+    ball.isBeingForced = true; // Prevents friction from stopping the ball
+    ball.velocity = new Vector2(directionX, directionY);
     ball.moving = true;
-    ball.visible = true; // Keep visible while rolling
+    ball.visible = true;
+    ball.inHole = false;
     
-    // DO NOT increment counter here - only increment when ball actually reaches the pocket!
+    // Store target pocket for monitoring
+    ball.targetPocket = nearestPocket;
     
-    console.log(`⚡ Ball rolling to pocket at (${randomPocket.x}, ${randomPocket.y})`);
-    console.log(`   Current position: (${ball.position.x.toFixed(0)}, ${ball.position.y.toFixed(0)})`);
-    console.log(`   Velocity set to: (${ball.velocity.x.toFixed(0)}, ${ball.velocity.y.toFixed(0)})`);
+    console.log(`⚡ Ball rolling from (${ballPos.x.toFixed(0)}, ${ballPos.y.toFixed(0)}) to pocket`);
+    console.log(`   Velocity: (${directionX.toFixed(0)}, ${directionY.toFixed(0)})`);
+    
+    // Store reference for interval
+    const self = this;
+    let checkCount = 0;
+    const maxChecks = 120; // 4 seconds max at 30fps check rate
     
     // Monitor ball and pocket it when it gets close
-    let checkCount = 0;
-    const maxChecks = 60; // 3 seconds max
-    const checkInterval = setInterval(() => {
-        checkCount++;
-        const distToPocket = Math.sqrt(
-            Math.pow(ball.position.x - randomPocket.x, 2) + 
-            Math.pow(ball.position.y - randomPocket.y, 2)
-        );
-        
-        if (checkCount % 10 === 0) {
-            console.log(`   Distance to pocket: ${distToPocket.toFixed(0)}, Ball position: (${ball.position.x.toFixed(0)}, ${ball.position.y.toFixed(0)})`);
+    const monitorInterval = setInterval(function() {
+        // Safety check - ball already pocketed or doesn't exist
+        if (!ball || ball.inHole) {
+            clearInterval(monitorInterval);
+            ball.isBeingForced = false;
+            return;
         }
         
-        if (distToPocket < 40 || !ball.moving || checkCount >= maxChecks) {
-            clearInterval(checkInterval);
+        checkCount++;
+        
+        // Calculate current distance to target pocket
+        const currentDx = nearestPocket.x - ball.position.x;
+        const currentDy = nearestPocket.y - ball.position.y;
+        const currentDistance = Math.sqrt(currentDx * currentDx + currentDy * currentDy);
+        
+        // Re-aim toward pocket if ball drifted
+        if (checkCount % 5 === 0 && currentDistance > 50) {
+            const newDx = (currentDx / currentDistance) * rollSpeed;
+            const newDy = (currentDy / currentDistance) * rollSpeed;
+            ball.velocity = new Vector2(newDx, newDy);
+        }
+        
+        // If close enough or timeout, pocket the ball
+        if (currentDistance < 45 || checkCount >= maxChecks) {
+            clearInterval(monitorInterval);
             
-            // NOW increment the counter when ball actually enters pocket
-            this.ballsPocketedInBreak++;
-            
-            // Now pocket the ball
-            ball.position.x = randomPocket.x;
-            ball.position.y = randomPocket.y;
+            // Pocket the ball
+            ball.position.x = nearestPocket.x;
+            ball.position.y = nearestPocket.y;
             ball.inHole = true;
             ball.visible = false;
             ball.moving = false;
+            ball.isBeingForced = false;
             ball.velocity = Vector2.zero;
             
-            // Play sound effect
+            self.ballsPocketedInBreak++;
+            
+            console.log("✅✅ Ball rolled into pocket! Total pocketed:", self.ballsPocketedInBreak);
+            
+            // Play hole sound
             if (Game.sound && SOUND_ON && typeof sounds !== 'undefined' && sounds.hole) {
                 try {
-                    const holeSound = sounds.hole.cloneNode(true);
-                    holeSound.volume = 0.5;
-                    holeSound.play();
-                } catch (error) {
-                    console.log("Sound effect error:", error);
-                }
+                    sounds.hole.currentTime = 0;
+                    sounds.hole.volume = 0.6;
+                    sounds.hole.play();
+                } catch (e) {}
             }
-            
-            console.log("✅ Ball entered pocket successfully! Total pocketed:", this.ballsPocketedInBreak);
         }
-    }, 50); // Check every 50ms
+    }, 33); // ~30fps check rate
 };
 
 GameWorld.prototype.analyzeBallsAfterBreak = function() {
@@ -1295,25 +1386,11 @@ GameWorld.prototype.detectBallClusters = function(ballPositions) {
 GameWorld.prototype.showDailyBreakResult = function(ballsScored, pointsAwarded) {
     console.log(`🎉 Showing Daily Break Result: ${ballsScored} balls = ${pointsAwarded} points`);
     
-    // HIDE ALL GAME ELEMENTS - POOL TABLE AND CONTAINERS
-    const gameCanvas = document.getElementById('gameArea');
-    const screenElement = document.getElementById('screen');
-    const gameCanvasContainer = document.getElementById('game-canvas-container');
+    // Get current total points for display
+    const currentPoints = Game.dailyRewards ? Game.dailyRewards.totalTokens : (parseFloat(localStorage.getItem('totalTokens')) || 0);
+    const newTotal = currentPoints + pointsAwarded;
     
-    if (gameCanvas) {
-        gameCanvas.style.display = 'none';
-        console.log("🎱 Pool table canvas hidden");
-    }
-    if (screenElement) {
-        screenElement.style.display = 'none';
-        console.log("🎱 Screen element hidden");
-    }
-    if (gameCanvasContainer) {
-        gameCanvasContainer.style.display = 'none';
-        console.log("🎱 Game container hidden");
-    }
-    
-    // Create overlay with SOLID BLACK background
+    // Create overlay - matches Point Double Up style
     const overlay = document.createElement('div');
     overlay.id = 'daily-break-result-overlay';
     overlay.style.cssText = `
@@ -1322,102 +1399,91 @@ GameWorld.prototype.showDailyBreakResult = function(ballsScored, pointsAwarded) 
         left: 0;
         width: 100vw;
         height: 100vh;
-        background: #000000;
+        background: rgba(0, 0, 0, 0.85);
         display: flex;
         justify-content: center;
         align-items: center;
         z-index: 99999;
     `;
     
+    // Create modal content - matches Point Double Up style
     const content = document.createElement('div');
     content.style.cssText = `
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 40px;
+        background: #1a1a2e;
+        padding: 30px 25px;
         border-radius: 20px;
         text-align: center;
         color: white;
-        box-shadow: 0 25px 50px rgba(0,0,0,0.5);
-        max-width: 500px;
-        animation: slideIn 0.5s ease-out;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.7);
+        max-width: 320px;
+        width: 90%;
     `;
     
     content.innerHTML = `
-        <h1 style="margin: 0 0 20px 0; font-size: 36px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
-            🎯 DAILY BREAK!
-        </h1>
-        <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; margin-bottom: 20px;">
-            <div style="font-size: 18px; margin-bottom: 10px; opacity: 0.9;">Balls Scored</div>
-            <div style="font-size: 64px; font-weight: bold; color: #FFD700; text-shadow: 3px 3px 6px rgba(0,0,0,0.5);">
-                ${ballsScored}
+        <h2 style="margin: 0 0 8px 0; font-size: 22px; font-weight: bold; letter-spacing: 1px;">
+            DAILY BREAK
+        </h2>
+        <p style="margin: 0 0 25px 0; font-size: 14px; color: #888;">
+            Current Points: ${newTotal.toLocaleString()} P
+        </p>
+        <div style="margin: 20px 0;">
+            <div style="background: #2a2a3e; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
+                <div style="font-size: 14px; color: #888; margin-bottom: 8px;">Balls Scored</div>
+                <div style="font-size: 36px; font-weight: bold; color: white;">${ballsScored}</div>
             </div>
         </div>
-        <div style="background: rgba(255,255,255,0.1); padding: 30px; border-radius: 15px; margin-bottom: 20px;">
-            <div style="font-size: 18px; margin-bottom: 10px; opacity: 0.9;">Points Earned</div>
-            <div style="font-size: 72px; font-weight: bold; color: #00FF88; text-shadow: 3px 3px 6px rgba(0,0,0,0.5);">
-                +${pointsAwarded}
-            </div>
+        <div style="margin-top: 20px; font-size: 18px; min-height: 24px;">
+            <span style="color: #2ecc71; font-weight: bold;">You Win!  +${pointsAwarded} P</span>
         </div>
-        <div style="font-size: 14px; opacity: 0.8; margin-top: 20px;">
-            ${this.getDailyBreakMessage(ballsScored)}
-        </div>
+        <button id="daily-break-close-btn" style="
+            background: #2ecc71;
+            color: white;
+            border: none;
+            padding: 14px 40px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            letter-spacing: 1px;
+        ">
+            CONTINUE
+        </button>
     `;
     
     overlay.appendChild(content);
     document.body.appendChild(overlay);
     
-    // Add points to user's total
-    console.log("💰💰💰 ADDING POINTS TO TOTAL 💰💰💰");
-    console.log("   Points to award:", pointsAwarded);
-    console.log("   Game object exists:", typeof Game !== 'undefined');
-    console.log("   Game.dailyRewards exists:", typeof Game !== 'undefined' && !!Game.dailyRewards);
-    
-    if (typeof Game !== 'undefined' && Game.dailyRewards) {
-        const oldTotal = Game.dailyRewards.totalTokens;
-        console.log("   BEFORE: totalTokens =", oldTotal);
-        
-        // Add the points
-        Game.dailyRewards.totalTokens = oldTotal + pointsAwarded;
-        
-        // Save to localStorage
-        localStorage.setItem('totalTokens', Game.dailyRewards.totalTokens.toString());
-        
-        console.log("   AFTER: totalTokens =", Game.dailyRewards.totalTokens);
-        console.log("   Calculation:", oldTotal, "+", pointsAwarded, "=", Game.dailyRewards.totalTokens);
-        console.log("   localStorage value:", localStorage.getItem('totalTokens'));
-        
-        // Force update the header display
-        const tokenDisplay = document.getElementById('token-balance');
-        console.log("   Token display element found:", !!tokenDisplay);
-        
-        if (tokenDisplay) {
-            const newDisplayValue = Math.round(Game.dailyRewards.totalTokens) + ' P';
-            console.log("   Setting display to:", newDisplayValue);
-            tokenDisplay.textContent = newDisplayValue;
-            console.log("   Display now shows:", tokenDisplay.textContent);
-            
-            // Double check it updated
-            setTimeout(() => {
-                console.log("   Display check after 100ms:", document.getElementById('token-balance').textContent);
-            }, 100);
-        } else {
-            console.error("❌ Token display element 'token-balance' not found in DOM!");
-        }
-    } else {
-        console.error("❌ Cannot add points - Game.dailyRewards not initialized!");
-        console.error("   Game exists:", typeof Game !== 'undefined');
-        if (typeof Game !== 'undefined') {
-            console.error("   Game.dailyRewards:", Game.dailyRewards);
-        }
+    // Add click handler for close button
+    const closeBtn = document.getElementById('daily-break-close-btn');
+    if (closeBtn) {
+        closeBtn.onclick = function() {
+            if (overlay.parentNode) {
+                document.body.removeChild(overlay);
+            }
+            // Return to main screen
+            window.location.reload();
+        };
     }
     
-    // Remove overlay after 3 seconds - don't show game elements again
-    setTimeout(() => {
-        if (overlay.parentNode) {
-            document.body.removeChild(overlay);
+    // Add points to user's total
+    console.log("💰 Adding points:", pointsAwarded);
+    
+    if (typeof Game !== 'undefined' && Game.dailyRewards) {
+        Game.dailyRewards.totalTokens = newTotal;
+        localStorage.setItem('totalTokens', Game.dailyRewards.totalTokens.toString());
+        
+        // Update header display
+        const tokenDisplay = document.getElementById('token-balance');
+        if (tokenDisplay) {
+            tokenDisplay.textContent = Math.round(Game.dailyRewards.totalTokens) + ' P';
         }
-        // Keep game elements hidden - user will return to menu
-        console.log("✅ Overlay removed, game elements remain hidden");
-    }, 3000);
+    } else {
+        // Fallback - save directly to localStorage
+        localStorage.setItem('totalTokens', newTotal.toString());
+    }
+    
+    console.log("✅ Points added. New total:", newTotal);
 };
 
 GameWorld.prototype.getDailyBreakMessage = function(ballsScored) {
@@ -1545,36 +1611,34 @@ GameWorld.prototype.completeAimShootShot = function() {
     }
     
     const totalReward = selectedReward.points;
+    console.log(`💰 Random reward selected: ${totalReward} points`);
     
     // Add to daily rewards
     if (typeof DailyReward !== 'undefined') {
         DailyReward.totalTokens += totalReward;
         localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
+        console.log(`📊 Total tokens updated: ${DailyReward.totalTokens}`);
     }
     // Add to wallet rewards if connected
     if (typeof SolanaWalletManager !== 'undefined') {
         SolanaWalletManager.addPendingReward(totalReward, "Aim & Shoot");
     }
     
-    // Increment attempt counter
-    const currentAttempts = parseInt(localStorage.getItem('aimShootAttempts') || '0');
-    const newAttempts = currentAttempts + 1;
-    localStorage.setItem('aimShootAttempts', newAttempts.toString());
+    // Increment shot counter
+    const currentShots = parseInt(localStorage.getItem('aimShootShots') || '0');
+    const newShots = currentShots + 1;
+    localStorage.setItem('aimShootShots', newShots.toString());
     
-    console.log(`✅ Shot ${newAttempts}/3 completed! Reward: ${totalReward} points`);
+    console.log(`✅ Shot ${newShots}/3 completed! Reward: ${totalReward} points`);
+    console.log(`📝 Updated localStorage - aimShootShots: ${newShots}`);
     
     // Show points display (requirement #2)
-    this.showAimShootReward(totalReward, newAttempts);
+    this.showAimShootReward(totalReward, newShots);
     
-    // Auto-reset after showing points (requirements #2 and #3)
+    // Auto-reset after showing points - NO COOLDOWN
     setTimeout(() => {
-        if (newAttempts >= 3) {
-            // After 3rd shot, show completion message (requirement #4)
-            this.showAimShoot24HourMessage();
-        } else {
-            // Reset for next shot (requirement #3)
-            this.resetAimShootForNextShot();
-        }
+        // Always reset for next shot - no wait time
+        this.resetAimShootForNextShot();
     }, 2500); // Show points for 2.5 seconds
 };
 
@@ -1611,8 +1675,8 @@ GameWorld.prototype.showAimShootReward = function(points, shotNumber) {
     }, 2400);
 };
 
-GameWorld.prototype.showAimShoot24HourMessage = function() {
-    console.log("🎯 All 3 shots completed! Showing 24-hour message...");
+GameWorld.prototype.showAimShoot5MinuteMessage = function() {
+    console.log("🎯 All 3 shots completed! Showing 5-minute cooldown message...");
     
     // Create completion message overlay
     const overlay = document.createElement('div');
@@ -1633,7 +1697,7 @@ GameWorld.prototype.showAimShoot24HourMessage = function() {
         <div style="font-size: 48px; margin-bottom: 25px;">✅</div>
         <div style="margin-bottom: 20px; color: #4CAF50;">Congratulations!</div>
         <div style="font-size: 24px; margin-bottom: 30px;">You have completed 3 shots.</div>
-        <div style="font-size: 22px; color: #FFD700;">Please come back in 24 hours to play again.</div>
+        <div style="font-size: 22px; color: #FFD700;">Please wait 5 minutes to play again.</div>
     `;
     
     document.body.appendChild(overlay);

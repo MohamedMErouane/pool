@@ -141,41 +141,31 @@ Game_Singleton.prototype.startBreakGame = function(){
     console.log(`🎯 DAILY BREAK STARTED - Attempt ${dailyBreakAttempts + 1} of 3`);
     console.log("📋 CLIENT SPEC: Ball will slowly roll into hole, show points, auto-reset");
 
-    Canvas2D.clear();
-    Canvas2D.drawImage(
-        sprites.controls, 
-        new Vector2(Game.size.x/2,Game.size.y/2), 
-        0, 
-        1, 
-        new Vector2(sprites.controls.width/2,sprites.controls.height/2)
-    );
+    // Mark as Daily Break mode in localStorage
+    localStorage.setItem('dailyBreakMode', 'true');
 
-    setTimeout(()=>{
-        Game.mainLoop();
-    },3000);
+    // Start the game directly without showing controls
+    GAME_STOPPED = false;
+    Game.mainLoop();
 }
 
 Game_Singleton.prototype.startAimShootGame = function(){
     Canvas2D._canvas.style.cursor = "auto";
 
-    // CLIENT SPECIFICATION: Check if player has attempts left
-    const today = new Date().toDateString();
-    const lastPlayDate = localStorage.getItem('lastPlayDate') || '';
-    const aimShootAttempts = parseInt(localStorage.getItem('aimShootAttempts') || '0');
-    
-    // Reset attempts if it's a new day
-    if (lastPlayDate !== today) {
-        localStorage.setItem('aimShootAttempts', '0');
-        localStorage.setItem('lastPlayDate', today);
-    } else if (aimShootAttempts >= 3) {
-        // Show 24-hour message if player has used all attempts
-        this.show24HourMessage('Aim Shot');
-        return;
-    }
+    // COOLDOWN DISABLED: No wait time for Aim & Shoot
+    // Reset shots counter each time to allow unlimited play
+    localStorage.setItem('aimShootShots', '0');
 
     // Ensure sound is enabled for aim shoot mode
     Game.sound = true;
     console.log("🎯 Sound enabled for Aim & Shoot mode");
+
+    // Initialize AI object to prevent blocking (AI is not used in Aim & Shoot)
+    if (typeof AI === 'undefined') {
+        window.AI = {};
+    }
+    AI.finishedSession = true;
+    console.log("🤖 AI.finishedSession set to true for Aim & Shoot mode");
 
     // Initialize Aim & Shoot mode with only white and black ball
     Game.gameWorld = new AimShootMode();
@@ -188,8 +178,13 @@ Game_Singleton.prototype.startAimShootGame = function(){
     Game.gameWorld.aimShootTargetForced = false;
     Game.gameWorld.aimShootShotTriggered = false; // Initialize shot trigger flag
     
-    console.log(`🎯 AIM SHOOT STARTED - Attempt ${aimShootAttempts + 1} of 3`);
-    console.log("📋 CLIENT SPEC: Ball must ALWAYS go into hole, show points, auto-reset");
+    const currentShots = parseInt(localStorage.getItem('aimShootShots') || '0');
+    console.log(`🎯 AIM SHOOT STARTED - Shot ${currentShots + 1} of 3`);
+    console.log("📋 CLIENT SPEC: Ball must ALWAYS go into hole, show points, auto-reset, 5-min cooldown");
+
+    // Enable game display and start the game loop
+    DISPLAY = true;
+    GAME_STOPPED = false;
 
     Canvas2D.clear();
     Canvas2D.drawImage(
@@ -201,13 +196,13 @@ Game_Singleton.prototype.startAimShootGame = function(){
     );
 
     setTimeout(()=>{
-        Game.mainLoop();
+        requestAnimationFrame(Game.mainLoop);
     },1000);
 }
 
-// Show 24-hour wait message
-Game_Singleton.prototype.show24HourMessage = function(mode) {
-    console.log(`⏰ Showing 24-hour message for ${mode}`);
+// Show 5-minute wait message
+Game_Singleton.prototype.show5MinuteMessage = function(remainingMinutes) {
+    console.log(`⏰ Showing 5-minute cooldown message - ${remainingMinutes} minutes remaining`);
     
     const overlay = document.createElement('div');
     overlay.style.position = 'fixed';
@@ -224,14 +219,11 @@ Game_Singleton.prototype.show24HourMessage = function(mode) {
     overlay.style.zIndex = '10000';
     overlay.style.border = '3px solid #FF4444';
     
-    const message = mode === 'Aim Shot' ? 
-        'You have completed 3 shots. Please come back in 24 hours to play again.' :
-        'The game will be available again after 24 hours, and the player cannot play until then.';
-    
     overlay.innerHTML = `
-        <div style="margin-bottom: 25px; font-size: 26px; color: #FF6666;">3 Attempts Completed!</div>
-        <div style="margin-bottom: 20px; line-height: 1.5;">${message}</div>
-        <div style="font-size: 16px; color: #CCCCCC;">Come back tomorrow for more attempts!</div>
+        <div style="margin-bottom: 25px; font-size: 26px; color: #FF6666;">🎯 Cooldown Active</div>
+        <div style="margin-bottom: 20px; line-height: 1.5;">You have completed 3 shots.</div>
+        <div style="font-size: 24px; color: #FFD700; margin: 20px 0;">Please wait ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}</div>
+        <div style="font-size: 16px; color: #CCCCCC;">Come back soon to play again!</div>
         <div style="margin-top: 25px;">
             <button onclick="this.parentElement.parentElement.remove();" 
                     style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
@@ -276,23 +268,8 @@ Game_Singleton.prototype.mainLoop = function () {
             }
           }
           
-          // Aim & Shoot forcing
-          if (Game.gameWorld.isAimShootMode) {
-            let ballsMoving = false;
-            for (let i = 0; i < Game.gameWorld.balls.length; i++) {
-              if (Game.gameWorld.balls[i] && Game.gameWorld.balls[i].velocity && 
-                  (Math.abs(Game.gameWorld.balls[i].velocity.x) > 1 || Math.abs(Game.gameWorld.balls[i].velocity.y) > 1)) {
-                ballsMoving = true;
-                break;
-              }
-            }
-            
-            // If balls have stopped and we haven't forced yet, FORCE NOW!
-            if (!ballsMoving && !Game.gameWorld.ballsForced && Game.policy && Game.policy.turnPlayed) {
-              console.log("🚨 MAIN LOOP: FORCING AIM SHOOT BALL NOW!");
-              this.forceAimShootBallInMainLoop();
-            }
-          }
+          // Aim & Shoot forcing - handled in AimShootMode.update()
+          // No need for additional forcing here as it's handled in the update method
         }
         
         Canvas2D.clear();

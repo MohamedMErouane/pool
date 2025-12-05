@@ -6,21 +6,64 @@
     <title>Pool Game - Aim Shoot Mode</title>
     <meta charset="utf-8" />
     <link rel="stylesheet" type="text/css" href="css/game-layout.css">
+    <style>
+        @keyframes popIn {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+        
+        #win-overlay {
+            display: none !important;
+            pointer-events: none;
+        }
+        
+        #win-overlay.show {
+            display: block !important;
+        }
+    </style>
 </head>
 
 <body>
     <!-- Score Display -->
     <div id="aim-score" style="position: absolute; top: 20px; left: 20px; background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 25px; font-size: 18px; font-weight: bold; z-index: 1000; box-shadow: 0 3px 10px rgba(0,0,0,0.5);">
-        Balls Pocketed: 0
+        <span style="color: #2ecc71;">Total Points:</span> <span id="total-points-display">0</span> P
     </div>
+    
+    <script>
+        // Update total points display on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            const totalPoints = parseFloat(localStorage.getItem('totalTokens')) || 0;
+            const display = document.getElementById('total-points-display');
+            if (display) {
+                display.textContent = Math.floor(totalPoints).toLocaleString();
+            }
+        });
+    </script>
     
     <!-- Back Button -->
     <a href="index.html" style="position: absolute; top: 20px; right: 20px; background: rgba(255,0,0,0.8); color: white; padding: 10px 20px; border-radius: 25px; text-decoration: none; font-size: 16px; font-weight: bold; z-index: 1000; box-shadow: 0 3px 10px rgba(0,0,0,0.5);">
         ← Back to Main
     </a>
     
-    <div id="gameArea">
+    <div id="gameArea" style="position: relative;">
         <canvas id="screen" width="1440" height="825"></canvas>
+        
+        <!-- Win Display Overlay - Inside game area, centered on canvas -->
+        <div id="win-overlay" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999; text-align: center; pointer-events: none;">
+            <div style="background: rgba(26, 26, 46, 0.98); padding: 40px 60px; border-radius: 20px; box-shadow: 0 15px 50px rgba(0,0,0,0.9), 0 0 30px rgba(46, 204, 113, 0.3); border: 2px solid rgba(46, 204, 113, 0.5);">
+                <div id="win-text" style="font-size: 32px; font-weight: bold; color: #2ecc71; text-shadow: 0 0 20px rgba(46, 204, 113, 0.5);">You Win!  +100 P</div>
+            </div>
+        </div>
     </div>
 
     <script src="script/lib/LAB.min.js"></script>
@@ -41,6 +84,7 @@
         window.Game = {
             spritesStillLoading: 0,
             aimModeScore: 0, // Track score in aim mode
+            sound: true, // Enable sounds
             loadSprite: function(imageSrc) {
                 Game.spritesStillLoading++;
                 var image = new Image();
@@ -64,60 +108,27 @@
 
         // Initialize sprites and sounds objects
         window.sprites = {};
+        
+        // Load actual sound files
         window.sounds = {
-            // Create dummy audio objects to prevent errors
-            strike: {
-                cloneNode: function(deep) {
-                    return {
-                        play: function() { 
-                            console.log("Strike sound played (silent in aim mode)");
-                        },
-                        volume: 0,
-                        addEventListener: function() {},
-                        removeEventListener: function() {}
-                    };
-                }
-            },
-            hole: {
-                cloneNode: function(deep) {
-                    return {
-                        play: function() { 
-                            console.log("🔊 Ball in hole! (aim mode)");
-                            // Play a simple success sound or beep
-                            try {
-                                // Create a simple success audio feedback
-                                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                                const oscillator = audioContext.createOscillator();
-                                const gainNode = audioContext.createGain();
-                                
-                                oscillator.connect(gainNode);
-                                gainNode.connect(audioContext.destination);
-                                
-                                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                                oscillator.frequency.setValueAtTime(1000, audioContext.currentTime + 0.1);
-                                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-                                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-                                
-                                oscillator.start(audioContext.currentTime);
-                                oscillator.stop(audioContext.currentTime + 0.2);
-                            } catch (error) {
-                                console.log("Audio feedback not available:", error);
-                            }
-                        },
-                        volume: 0.5,
-                        addEventListener: function() {},
-                        removeEventListener: function() {}
-                    };
-                }
-            }
+            strike: new Audio('assets/sounds/Strike.wav'),
+            hole: new Audio('assets/sounds/Hole.wav')
         };
+        
+        // Preload sounds
+        sounds.strike.load();
+        sounds.hole.load();
+        sounds.hole.volume = 0.7;
+        sounds.strike.volume = 0.5;
+        
+        console.log("🔊 Sound files loaded: Strike.wav and Hole.wav");
         
         // Define AI constants for Stick compatibility
         window.AI_ON = false;
         window.AI_PLAYER_NUM = 1;
         
         // Define sound constants for Ball.js compatibility
-        window.SOUND_ON = false; // Disable sounds in aim mode
+        window.SOUND_ON = true; // Enable sounds in aim mode
 
         $LAB
             .script("script/system/Keys.js").wait()
@@ -198,6 +209,13 @@
                     // Position cue stick UP to align with balls at Y=400
                     this.stick.origin = new Vector2(970, -5); // Increased slightly for fine-tuning alignment
                     this.stick.shotOrigin = new Vector2(950, 25); // Increased slightly for fine-tuning alignment
+                    
+                    // Aim & Shoot mode flags
+                    this.shotTriggered = false; // Track if shot was taken
+                    this.ballForcing = false; // Track if ball is being forced to pocket
+                    this.forcingInterval = null; // Store interval ID
+                    this.collisionDetected = false; // Track if collision has occurred
+                    this.roundCompleted = false; // Track if round completion has been handled
                     // Create comprehensive Game.policy for Ball.js compatibility
                     if (!Game.policy) {
                         Game.policy = {
@@ -248,6 +266,18 @@
                             // Ball in hole handler - handle scoring in aim mode
                             handleBallInHole: function(ball) {
                                 console.log("Ball scored in hole! (aim mode)");
+                                
+                                // Play hole sound
+                                if (typeof sounds !== 'undefined' && sounds.hole) {
+                                    try {
+                                        sounds.hole.currentTime = 0;
+                                        sounds.hole.volume = 0.8;
+                                        sounds.hole.play();
+                                        console.log("🔊 Hole.wav sound played from handleBallInHole!");
+                                    } catch (error) {
+                                        console.log("Sound effect error:", error);
+                                    }
+                                }
                                 
                                 // Track the scored ball
                                 if (ball && !ball.counted) {
@@ -315,25 +345,109 @@
                     this.stick.update(delta);
                     this.handleInput(delta);
 
-                    // Handle collision between white ball and black ball only
-                    this.handleCollision(this.whiteBall, this.blackBall, delta);
+                    // Only handle collision if black ball is NOT in hole
+                    if (!this.blackBall.inHole) {
+                        this.handleCollision(this.whiteBall, this.blackBall, delta);
+                    }
 
-                    // Update only our two balls
+                    // Update white ball always
                     this.whiteBall.update(delta);
-                    this.blackBall.update(delta);
+                    
+                    // Store previous state to detect when ball just went in hole
+                    const wasInHole = this.blackBall.inHole;
+                    
+                    // CRITICAL: Only update black ball if it's NOT in hole
+                    // This prevents physics from moving it back on table
+                    if (!this.blackBall.inHole) {
+                        this.blackBall.update(delta);
+                    } else {
+                        // Ball is in hole - lock position and ensure it stays there
+                        // Find which pocket it's in and lock to that position
+                        const pockets = [
+                            {x: 70, y: 70}, {x: 720, y: 57}, {x: 1370, y: 70},
+                            {x: 70, y: 755}, {x: 720, y: 768}, {x: 1370, y: 755}
+                        ];
+                        let nearestPocket = pockets[0];
+                        let minDist = Infinity;
+                        for (let p of pockets) {
+                            const dist = Math.sqrt(
+                                Math.pow(this.blackBall.position.x - p.x, 2) + 
+                                Math.pow(this.blackBall.position.y - p.y, 2)
+                            );
+                            if (dist < minDist) {
+                                minDist = dist;
+                                nearestPocket = p;
+                            }
+                        }
+                        // Lock position to pocket
+                        this.blackBall.position.x = nearestPocket.x;
+                        this.blackBall.position.y = nearestPocket.y;
+                        this.blackBall.velocity = Vector2.zero;
+                        this.blackBall.moving = false;
+                    }
+                    
+                    // CRITICAL: Detect when ball just went in hole and trigger refresh
+                    if (this.blackBall.inHole && !wasInHole && !this.roundCompleted) {
+                        console.log("🎯 BALL DETECTED IN HOLE - Triggering page refresh!");
+                        this.roundCompleted = true; // Prevent multiple calls
+                        handleRoundComplete();
+                    }
+                };
+                
+                // Check if any balls are still moving
+                AimShootMode.prototype.ballsMoving = function() {
+                    for (let i = 0; i < this.balls.length; i++) {
+                        if (this.balls[i].moving || 
+                            (Math.abs(this.balls[i].velocity.x) > 0.1 || 
+                             Math.abs(this.balls[i].velocity.y) > 0.1)) {
+                            return true;
+                        }
+                    }
+                    return false;
                 };
 
                 AimShootMode.prototype.handleInput = function (delta) {
                     this.stick.handleInput(delta);
+                    
+                    // Detect when shot is taken
+                    if (!this.shotTriggered && this.whiteBall.moving) {
+                        this.shotTriggered = true;
+                        console.log("🎯 Shot detected! White ball is moving.");
+                    }
                 };
 
                 AimShootMode.prototype.handleCollision = function(ball1, ball2, delta){
+                    // CRITICAL: Don't process collision if black ball is already in hole
+                    if (this.blackBall.inHole) {
+                        return;
+                    }
+                    
                     // Check collision distance
                     var distance = ball1.position.distanceFrom(ball2.position);
                     
                     // If balls are colliding (closer than ball size)
                     if(distance < BALL_SIZE && distance > 0){
                         console.log("Collision detected! Distance:", distance);
+                        
+                        // Determine which ball is white (cue) and which is black (target)
+                        var whiteBall = (ball1 === this.whiteBall) ? ball1 : ball2;
+                        var blackBall = (ball1 === this.whiteBall) ? ball2 : ball1;
+                        
+                        // Only trigger forcing once per collision AND only if black ball not in hole
+                        if (!this.collisionDetected && !this.blackBall.inHole && 
+                            whiteBall === this.whiteBall && blackBall === this.blackBall) {
+                            this.collisionDetected = true;
+                            console.log("🎯 CUE BALL HIT BLACK BALL - Starting realistic trajectory NOW!");
+                            
+                            // Start forcing immediately after collision
+                            // Use a small delay to let collision physics apply first
+                            var self = this;
+                            setTimeout(function() {
+                                if (!self.ballForcing && !self.blackBall.inHole) {
+                                    self.forceBlackBallInHole();
+                                }
+                            }, 50); // 50ms delay to let collision physics settle
+                        }
                         
                         // Calculate collision normal (direction from ball1 to ball2)
                         var dx = ball2.position.x - ball1.position.x;
@@ -390,9 +504,13 @@
                         console.log("Background sprite not loaded, using fallback color");
                     }
 
-                    // Draw ONLY our two balls - no loops, no other balls
+                    // Draw white ball always
                     this.whiteBall.draw();
-                    this.blackBall.draw();
+                    
+                    // CRITICAL: Only draw black ball if it's NOT in hole
+                    if (!this.blackBall.inHole) {
+                        this.blackBall.draw();
+                    }
 
                     // Draw the cue stick
                     this.stick.draw();
@@ -402,21 +520,322 @@
                     return this.blackBall.inHole;
                 };
 
-                AimShootMode.prototype.respawnBlackBall = function() {
-                    var randomX = 800 + Math.random() * 400;
-                    var randomY = 300 + Math.random() * 200;
+                // RESPAWN FUNCTION REMOVED - Ball stays in hole permanently
+                // No automatic respawn to prevent conflicts and glitches
+                
+                // STRATEGY 2: Straight-Line Direct Path
+                // Calculate nearest pocket and move ball directly toward it
+                // NOW TRIGGERED IMMEDIATELY AFTER COLLISION for realistic movement
+                AimShootMode.prototype.forceBlackBallInHole = function() {
+                    if (this.ballForcing || this.blackBall.inHole) {
+                        return; // Already forcing or already potted
+                    }
                     
-                    this.blackBall.position = new Vector2(randomX, randomY);
-                    this.blackBall.inHole = false;
-                    this.blackBall.velocity = Vector2.zero;
-                    this.blackBall.moving = false;
+                    console.log("🎯 Starting STRATEGY 2: Straight-Line Direct Path (Realistic - After Collision)");
+                    this.ballForcing = true;
+                    
+                    // Define all 6 pockets
+                    const pockets = [
+                        {x: 70, y: 70},      // Top-left
+                        {x: 720, y: 57},     // Top-center  
+                        {x: 1370, y: 70},    // Top-right
+                        {x: 70, y: 755},      // Bottom-left
+                        {x: 720, y: 768},    // Bottom-center
+                        {x: 1370, y: 755}    // Bottom-right
+                    ];
+                    
+                    // Find nearest pocket
+                    let nearestPocket = pockets[0];
+                    let minDistance = Infinity;
+                    const ballPos = this.blackBall.position;
+                    
+                    for (let i = 0; i < pockets.length; i++) {
+                        const dx = pockets[i].x - ballPos.x;
+                        const dy = pockets[i].y - ballPos.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearestPocket = pockets[i];
+                        }
+                    }
+                    
+                    console.log(`🎯 Nearest pocket: (${nearestPocket.x}, ${nearestPocket.y})`);
+                    console.log(`📏 Distance: ${minDistance.toFixed(0)} pixels`);
+                    console.log(`⚡ Black ball current velocity: (${this.blackBall.velocity.x.toFixed(1)}, ${this.blackBall.velocity.y.toFixed(1)})`);
+                    
+                    // Calculate direction vector to pocket
+                    const dx = nearestPocket.x - ballPos.x;
+                    const dy = nearestPocket.y - ballPos.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // Normalize direction
+                    const directionX = dx / distance;
+                    const directionY = dy / distance;
+                    
+                    // Use the ball's current velocity magnitude for realistic speed
+                    // If ball has velocity from collision, use it; otherwise use default
+                    const currentSpeed = Math.sqrt(
+                        this.blackBall.velocity.x * this.blackBall.velocity.x + 
+                        this.blackBall.velocity.y * this.blackBall.velocity.y
+                    );
+                    
+                    // Set movement speed - SLOWED DOWN for better visual effect
+                    const baseSpeed = currentSpeed > 50 ? currentSpeed / 120 : 3; // pixels per frame (slower)
+                    const speed = Math.max(baseSpeed, 2.5); // Minimum 2.5 pixels per frame for slower movement
+                    
+                    // Clear any existing interval
+                    if (this.forcingInterval) {
+                        clearInterval(this.forcingInterval);
+                    }
+                    
+                    // Store reference to this for use in interval
+                    const self = this;
+                    let frameCount = 0;
+                    const maxFrames = Math.ceil(distance / speed) + 10; // Safety limit
+                    
+                    // Move ball directly toward pocket every frame
+                    this.forcingInterval = setInterval(function() {
+                        // CRITICAL SAFETY CHECK: Exit immediately if ball is already in hole
+                        if (!self.blackBall || self.blackBall.inHole) {
+                            if (self.forcingInterval) {
+                                clearInterval(self.forcingInterval);
+                                self.forcingInterval = null;
+                            }
+                            self.ballForcing = false;
+                            self.collisionDetected = false;
+                            // Don't return here - let update() method handle the refresh
+                            return;
+                        }
+                        
+                        frameCount++;
+                        
+                        // Safety check - stop if max frames reached
+                        if (frameCount > maxFrames) {
+                            if (self.forcingInterval) {
+                                clearInterval(self.forcingInterval);
+                                self.forcingInterval = null; // Clear reference
+                            }
+                            // Force pocket if not already pocketed
+                            self.blackBall.position = new Vector2(nearestPocket.x, nearestPocket.y);
+                            self.blackBall.inHole = true;
+                            self.blackBall.visible = false;
+                            self.blackBall.moving = false;
+                            self.blackBall.velocity = Vector2.zero;
+                            console.log("✅ Ball forced into pocket (safety timeout)");
+                            self.ballForcing = false;
+                            self.collisionDetected = false;
+                            self.roundCompleted = true; // Mark as completed to prevent duplicate calls
+                            
+                            // Handle round completion even on timeout
+                            handleRoundComplete();
+                            return;
+                        }
+                        
+                        // Calculate current distance to pocket
+                        const currentDx = nearestPocket.x - self.blackBall.position.x;
+                        const currentDy = nearestPocket.y - self.blackBall.position.y;
+                        const currentDistance = Math.sqrt(currentDx * currentDx + currentDy * currentDy);
+                        
+                        // If close enough, pocket the ball
+                        if (currentDistance < 30) {
+                            if (self.forcingInterval) {
+                                clearInterval(self.forcingInterval);
+                                self.forcingInterval = null; // Clear reference
+                            }
+                            
+                            // POCKET THE BALL - Set all flags to prevent any further movement
+                            self.blackBall.position = new Vector2(nearestPocket.x, nearestPocket.y);
+                            self.blackBall.inHole = true;
+                            self.blackBall.visible = false;
+                            self.blackBall.moving = false;
+                            self.blackBall.velocity = Vector2.zero;
+                            
+                            // Ensure ball stays in hole position
+                            self.blackBall.position.x = nearestPocket.x;
+                            self.blackBall.position.y = nearestPocket.y;
+                            
+                            console.log("✅✅✅ BLACK BALL SCORED - ENTERED HOLE!");
+                            
+                            // Play hole sound
+                            if (typeof sounds !== 'undefined' && sounds.hole) {
+                                try {
+                                    sounds.hole.currentTime = 0; // Reset to start
+                                    sounds.hole.volume = 0.8;
+                                    sounds.hole.play();
+                                    console.log("🔊 Hole.wav sound played!");
+                                } catch (error) {
+                                    console.log("Sound effect error:", error);
+                                }
+                            }
+                            
+                            // Handle scoring
+                            if (Game.policy && Game.policy.handleBallInHole) {
+                                Game.policy.handleBallInHole(self.blackBall);
+                            }
+                            
+                            // Clear all forcing flags
+                            self.ballForcing = false;
+                            self.collisionDetected = false; // Reset collision flag
+                            self.roundCompleted = true; // Mark as completed to prevent duplicate calls
+                            
+                            // Increment round counter and handle page refresh
+                            handleRoundComplete();
+                            
+                            return;
+                        }
+                        
+                        // CRITICAL: Double-check ball is not in hole before moving
+                        if (self.blackBall.inHole) {
+                            if (self.forcingInterval) {
+                                clearInterval(self.forcingInterval);
+                                self.forcingInterval = null;
+                            }
+                            self.ballForcing = false;
+                            // Don't return here - let update() method handle the refresh
+                            return;
+                        }
+                        
+                        // Move ball toward pocket - blend with existing velocity for realism
+                        const moveX = directionX * speed;
+                        const moveY = directionY * speed;
+                        
+                        // Apply movement
+                        self.blackBall.position.x += moveX;
+                        self.blackBall.position.y += moveY;
+                        
+                        // Set velocity for visual effect - gradually steer toward pocket
+                        // Blend current velocity with target direction for smooth transition
+                        const blendFactor = 0.3; // How much to blend (0 = keep current, 1 = full target)
+                        const targetVelX = directionX * speed * 60;
+                        const targetVelY = directionY * speed * 60;
+                        
+                        self.blackBall.velocity.x = self.blackBall.velocity.x * (1 - blendFactor) + targetVelX * blendFactor;
+                        self.blackBall.velocity.y = self.blackBall.velocity.y * (1 - blendFactor) + targetVelY * blendFactor;
+                        
+                        self.blackBall.moving = true;
+                        self.blackBall.visible = true;
+                        
+                        // Log progress every 20 frames
+                        if (frameCount % 20 === 0) {
+                            console.log(`📍 Moving to pocket... Distance: ${currentDistance.toFixed(0)}px, Frame: ${frameCount}`);
+                        }
+                    }, 16); // ~60fps (16ms per frame)
                 };
 
+                // Handle round completion: refresh page infinitely after each ball goes in
+                let refreshScheduled = false; // Prevent multiple refresh calls
+                
+                // Random points rewards for aim shoot
+                const pointRewards = [50, 75, 100, 125, 150, 200, 250, 300, 500];
+                
+                function getRandomPoints() {
+                    // Weighted random - lower values more likely
+                    const weights = [25, 20, 18, 12, 10, 7, 5, 2, 1]; // 100 total
+                    const totalWeight = weights.reduce((a, b) => a + b, 0);
+                    let random = Math.random() * totalWeight;
+                    
+                    for (let i = 0; i < weights.length; i++) {
+                        random -= weights[i];
+                        if (random <= 0) {
+                            return pointRewards[i];
+                        }
+                    }
+                    return pointRewards[0]; // Default fallback
+                }
+                
+                function showWinOverlay(points) {
+                    console.log(`🎉 showWinOverlay called with ${points} points`);
+                    
+                    const overlay = document.getElementById('win-overlay');
+                    const winText = document.getElementById('win-text');
+                    
+                    if (overlay && winText) {
+                        // Update text
+                        winText.textContent = `You Win!  +${points} P`;
+                        
+                        // Show overlay by adding the 'show' class
+                        overlay.classList.add('show');
+                        overlay.style.animation = 'popIn 0.4s ease-out';
+                        
+                        console.log(`✅ Win overlay displayed: +${points} P`);
+                    } else {
+                        console.error('❌ Could not find overlay elements!');
+                    }
+                }
+                
+                function addPointsToTotal(points) {
+                    // Get current total from localStorage
+                    let currentTotal = parseFloat(localStorage.getItem('totalTokens')) || 0;
+                    currentTotal += points;
+                    localStorage.setItem('totalTokens', currentTotal.toString());
+                    console.log(`💰 Added ${points} points. New total: ${currentTotal}`);
+                    
+                    // Update display on page
+                    const display = document.getElementById('total-points-display');
+                    if (display) {
+                        display.textContent = Math.floor(currentTotal).toLocaleString();
+                    }
+                    
+                    return currentTotal;
+                }
+                
+                function handleRoundComplete() {
+                    console.log('🎯🎯🎯 handleRoundComplete() CALLED! 🎯🎯🎯');
+                    
+                    // Prevent multiple calls
+                    if (refreshScheduled) {
+                        console.log('⚠️ Refresh already scheduled, skipping duplicate call');
+                        return;
+                    }
+                    
+                    refreshScheduled = true;
+                    console.log('✅ refreshScheduled set to true');
+                    
+                    // Get current round count (for display only, no limit)
+                    const currentRounds = parseInt(localStorage.getItem('aimShootRounds') || '0');
+                    const newRounds = currentRounds + 1;
+                    
+                    // Update round counter (unlimited)
+                    localStorage.setItem('aimShootRounds', newRounds.toString());
+                    console.log(`🎯 Round ${newRounds} completed - infinite mode active`);
+                    
+                    // Generate random points and show win overlay
+                    const pointsWon = getRandomPoints();
+                    console.log(`🎲 Random points generated: ${pointsWon}`);
+                    
+                    addPointsToTotal(pointsWon);
+                    console.log('💰 Points added to total');
+                    
+                    showWinOverlay(pointsWon);
+                    console.log('📺 showWinOverlay called');
+                    
+                    console.log('⏰ Scheduling page refresh in 2.5 seconds...');
+                    
+                    // Wait 2.5 seconds (to show win message) then refresh page
+                    setTimeout(function() {
+                        console.log('🔄 REFRESHING PAGE NOW... (infinite mode)');
+                        window.location.reload();
+                    }, 2500);
+                }
+                
                 // Initialize the aim shoot mode WITHOUT any external dependencies
                 var aimShootMode;
                 
+                // Check if user has access (no limits - infinite mode)
+                function checkAimShootAccess() {
+                    // No blocking - infinite mode enabled
+                    console.log('✅ Infinite mode active - no limits');
+                    return true;
+                }
+                
                 function startAimShootMode() {
                     console.log("Starting aim shoot mode...");
+                    
+                    // Check if user has access
+                    if (!checkAimShootAccess()) {
+                        return; // Blocked, redirect already happened
+                    }
                     
                     // Initialize Canvas2D with div and canvas IDs
                     try {
@@ -452,13 +871,8 @@
                     aimShootMode.update(1/60);
                     aimShootMode.draw();
                     
-                    // Check if black ball is potted
-                    if (aimShootMode.isBlackBallPotted()) {
-                        // Respawn black ball for continued practice
-                        setTimeout(function() {
-                            aimShootMode.respawnBlackBall();
-                        }, 1000); // Wait 1 second before respawning
-                    }
+                    // NO RESPAWN - Ball stays in hole permanently
+                    // Removed respawn functionality to prevent conflicts and glitches
                     
                     Mouse.reset();
                     requestAnimationFrame(gameLoop);

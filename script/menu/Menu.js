@@ -18,6 +18,13 @@ Menu.prototype.init = function
 }
 
 Menu.prototype.load = function(){
+    // SKIP MENU if Daily Break mode is active - go straight to game!
+    if (localStorage.getItem('dailyBreakMode') === 'true') {
+        console.log('🎯 Daily Break mode detected - SKIPPING MENU');
+        this.active = false;
+        return; // Don't load menu, don't play music
+    }
+    
     this.sound.currentTime = 0;
     this.active = true;
 
@@ -59,6 +66,16 @@ Menu.prototype.handleInput = function(){
 }
 
 Menu.prototype.menuLoop = function(){
+    // STOP MENU if Daily Break mode is active
+    if (localStorage.getItem('dailyBreakMode') === 'true') {
+        console.log('🎯 Daily Break mode - stopping menu loop');
+        this.active = false;
+        if (this.sound) {
+            this.sound.pause();
+            this.sound.currentTime = 0;
+        }
+        return;
+    }
 
     if(this.active){
         this.handleInput();
