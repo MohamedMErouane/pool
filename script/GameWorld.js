@@ -320,30 +320,24 @@ GameWorld.prototype.forceBlackBallInHole = function() {
     const topBorderY    = (Game.policy && Game.policy.topBorderY)    || 57;
     const bottomBorderY = (Game.policy && Game.policy.bottomBorderY) || 768;
 
-    // Define a fixed target pocket so the path is identical every time.
-    // We pick the TOP‑RIGHT corner pocket for a nice \"bank\" style shot.
-    const targetPocket = {
-        x: rightBorderX - 15,
-        y: topBorderY + 15
-    };
+    // Choose a random pocket for visual variety and fairness. Exclude last used pocket if available.
+    const pockets = this.getTablePockets();
+    let lastPocketIndex = parseInt(localStorage.getItem('lastAimPocketIndex') || '-1');
+    let indices = pockets.map((p, i) => i);
+    if (lastPocketIndex >= 0 && indices.length > 1) indices = indices.filter(i => i !== lastPocketIndex);
+    const chosenIndex = indices[Math.floor(Math.random() * indices.length)];
+    const targetPocket = pockets[chosenIndex];
 
     console.log(`🎯 BLACK BALL at (${targetBall.position.x.toFixed(0)}, ${targetBall.position.y.toFixed(0)})`);
-    console.log(`🎯 Using fixed target pocket at (${targetPocket.x.toFixed(0)}, ${targetPocket.y.toFixed(0)})`);
+    console.log(`🎯 Using RANDOM target pocket index ${chosenIndex} at (${targetPocket.x.toFixed(0)}, ${targetPocket.y.toFixed(0)})`);
 
-    // === BANK SHOT TRAJECTORY ===
-    // We build a piecewise-linear path:
-    //  1) From current position → right cushion
-    //  2) Slide up along right cushion → near top cushion (corner)
-    //  3) From corner → into target pocket
-    //
-    // This guarantees that every Aim & Shoot shot visually hits the cushions
-    // (corners) on the way to the pocket, regardless of the actual physics.
-
+    // === SMOOTH ROLL TRAJECTORY ===
+    // We'll build a smooth visible path to the chosen pocket using 3 waypoints.
     const cushionOffset = 25; // how far inside the cushions we travel
 
-    // Waypoint 1: hit the right cushion horizontally from current position
+    // Waypoint 1: move horizontally/vertically toward an intermediate point near the pocket
     const waypoint1 = {
-        x: rightBorderX - cushionOffset,
+        x: (targetBall.position.x + targetPocket.x) / 2,
         y: targetBall.position.y
     };
 
@@ -884,22 +878,17 @@ GameWorld.prototype.handleBreakComplete = function() {
         Game.miniGames = new MiniGames();
     }
     
-    // Show custom result for daily break with points
-    if (isDailyBreak && this.dailyBreakPoints && this.dailyBreakBallsScored) {
-        console.log("🎉 Showing daily break result");
-        this.showDailyBreakResult(this.dailyBreakBallsScored, this.dailyBreakPoints);
-        
-        // Reset game after showing result
-        setTimeout(() => {
-            this.reset();
-            this.ballsPocketedInBreak = 0;
-            this.dailyBreakPoints = 0;
-            this.dailyBreakBallsScored = 0;
-            Game.initMenus(false);
-            Game.mainMenu.active = true;
-            GAME_STOPPED = true;
-            console.log("🔄 Returned to main menu after daily break");
-        }, 4000);
+    // If this was a Daily Break mini-game launched through Game.currentMiniGame,
+    // delegate completion handling to the Game mini-game flow so the per-attempt
+    // navigation (show attempt result -> continue -> next attempt) works correctly.
+    if (isDailyBreak && typeof Game !== 'undefined' && Game.currentMiniGame && Game.currentMiniGame.isActive && Game.currentMiniGame.type === 'dailyBreak') {
+        console.log('🎯 Delegating daily break completion to Game.completeDailyBreakAttempt()');
+        try {
+            Game.completeDailyBreakAttempt();
+        } catch (e) {
+            console.error('Error delegating daily break completion:', e);
+            // Fallback to old behaviour
+        }
         return;
     }
     
@@ -936,6 +925,19 @@ GameWorld.prototype.handleBreakComplete = function() {
     GAME_STOPPED = true;
     
     console.log("🔄 Immediately returned to initial screen");
+};
+
+// Return the six table pocket positions for the current table size
+GameWorld.prototype.getTablePockets = function() {
+    // These coordinates match the 1500x825 layout used elsewhere
+    return [
+        { x: 70, y: 70 },       // Top-left
+        { x: 720, y: 57 },      // Top-center
+        { x: 1370, y: 70 },     // Top-right
+        { x: 70, y: 755 },      // Bottom-left
+        { x: 720, y: 768 },     // Bottom-center
+        { x: 1370, y: 755 }     // Bottom-right
+    ];
 };
 
 GameWorld.prototype.forceDailyBreakBalls = function() {

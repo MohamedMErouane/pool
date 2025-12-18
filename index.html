@@ -57,10 +57,6 @@
                 // Single-player mode initialization (socket.io disabled for Vercel)
                 console.log('🎮 Initializing single-player mode');
                 
-                // CLEAR Daily Break flag on page load - allow menu to show normally
-                localStorage.removeItem('dailyBreakMode');
-                console.log('✅ dailyBreakMode flag cleared on page load');
-                
                 // Start the game system (but don't start playing)
                 Game.start('gameArea', 'screen', 1500, 825);
                 
@@ -134,7 +130,7 @@
                                 
                 // Initialize wallet manager after game starts
                 setTimeout(() => {
-                    console.log('=== INITIALIZING WALLET SYSTEM ==='); 
+                    console.log('=== INITIALIZING WALLET SYSTEM ===');
                     
                     if (typeof SolanaWallet !== 'undefined') {
                         Game.walletManager = new SolanaWallet();
@@ -310,7 +306,7 @@
                 Daily break
             </button>
             
-            <button class="mini-game-btn" onclick="startPointDouble()">
+            <button class="mini-game-btn" onclick="window.location.href='point-double.html'">
                 Point Double Up X 2
             </button>
         </div>
@@ -634,24 +630,15 @@
          function startDailyBreak() {
             console.log('=== STARTING DAILY BREAK MINI-GAME ===');
             
-            // SET DAILY BREAK MODE FLAG FIRST - This will stop the menu loop!
+            // SET DAILY BREAK MODE FLAG - CRITICAL FOR BALL FORCING
             localStorage.setItem('dailyBreakMode', 'true');
             console.log('✅ dailyBreakMode set to true');
-            
-            // === CRITICAL: STOP THE MENU IMMEDIATELY ===
-            if (Game && Game.mainMenu) {
-                Game.mainMenu.active = false;
-                if (Game.mainMenu.sound) {
-                    Game.mainMenu.sound.pause();
-                    Game.mainMenu.sound.currentTime = 0;
-                }
-                console.log('✅ Main menu KILLED');
-            }
             
             // Hide bottom navigation bar during game
             const bottomNav = document.querySelector('.bottom-nav');
             if (bottomNav) {
                 bottomNav.style.display = 'none';
+                console.log('✅ Bottom navigation hidden for Daily Break');
             }
             
             // Set mini-game mode
@@ -661,57 +648,23 @@
                 completed: false
             };
             
-            // Show game canvas container
+            console.log('Daily Break mini-game set:', currentMiniGame);
+            
+            // Show game canvas container (same as test canvas)
             const gameCanvasContainer = document.getElementById('game-canvas-container');
+            console.log('Game canvas container found:', !!gameCanvasContainer);
+            
             if (gameCanvasContainer) {
                 gameCanvasContainer.style.display = 'flex';
+                console.log('✅ Game canvas container shown for Daily Break');
+            } else {
+                console.error('❌ Game canvas container not found!');
             }
             
-            // Check if scripts are loaded
-            if (typeof GameWorld === 'undefined' || typeof Game === 'undefined') {
-                console.error('❌ Scripts not loaded yet!');
-                alert('Please wait for the game to fully load.');
-                return;
-            }
-            
-            // Verify Canvas2D is ready
-            if (!Canvas2D || !Canvas2D._canvas) {
-                console.error('❌ Canvas2D not ready!');
-                return;
-            }
-            
-            // Wait for next frame to ensure menu loop has stopped
-            requestAnimationFrame(function() {
-                console.log('✅ Starting game on next frame...');
-                
-                // Set game flags
-                window.DISPLAY = true;
-                window.GAME_STOPPED = false;
-                window.AI_ON = false;
-                
-                // Set cursor
-                Canvas2D._canvas.style.cursor = "auto";
-                
-                // Clear canvas
-                Canvas2D.clear();
-                
-                // Create new game world and policy
-                Game.gameWorld = new GameWorld();
-                Game.policy = new GamePolicy();
-                
-                // Set break mode flags
-                Game.gameWorld.isBreakMode = true;
-                Game.gameWorld.miniGameActive = true;
-                Game.gameWorld.breakCompleted = false;
-                Game.gameWorld.ballsForced = false;
-                
-                console.log('✅ GameWorld created with break mode');
-                
-                // Start the main loop directly - NO MENU!
-                Game.mainLoop();
-                
-                console.log('✅ Daily Break game started - NO MENU!');
-            });
+            // Start the game - this will properly initialize Canvas2D and then call initializeGameWorld
+            console.log('About to start Daily Break game...');
+            startOriginalGame();
+            console.log('Daily Break setup complete');
         }
 
         function startPointDouble() {
@@ -722,10 +675,6 @@
         }
         
         function showPointDoubleInputModal() {
-            // Get current points
-            const currentPoints = Game.dailyRewards ? Game.dailyRewards.totalTokens : (parseFloat(localStorage.getItem('totalTokens')) || 0);
-            const formattedPoints = currentPoints.toLocaleString();
-            
             // Create modal overlay
             const modalOverlay = document.createElement('div');
             modalOverlay.id = 'point-double-modal';
@@ -735,54 +684,46 @@
                 left: 0;
                 width: 100vw;
                 height: 100vh;
-                background: rgba(0, 0, 0, 0.85);
+                background: rgba(0, 0, 0, 0.8);
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 z-index: 10000;
             `;
             
-            // Create modal content - Dark theme matching the design
+            // Create modal content
             const modalContent = document.createElement('div');
-            modalContent.id = 'point-double-content';
             modalContent.style.cssText = `
-                background: #1a1a2e;
-                padding: 30px 25px;
-                border-radius: 20px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                padding: 30px;
+                border-radius: 15px;
                 text-align: center;
                 color: white;
-                box-shadow: 0 25px 50px rgba(0,0,0,0.7);
-                max-width: 320px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+                max-width: 400px;
                 width: 90%;
             `;
             
             modalContent.innerHTML = `
-                <h2 style="margin: 0 0 8px 0; font-size: 22px; font-weight: bold; letter-spacing: 1px;">POINT DOUBLE UP</h2>
-                <p style="margin: 0 0 25px 0; font-size: 14px; color: #888;">Current Points: ${formattedPoints} P</p>
+                <h2 style="margin: 0 0 20px 0; font-size: 24px;">🎯 Point Challenge</h2>
+                <p style="margin: 0 0 20px 0; font-size: 16px;">Enter the number of points you want to wager.<br>Win and DOUBLE your points!</p>
                 
                 <div style="margin: 20px 0;">
-                    <label style="display: block; margin-bottom: 12px; font-size: 14px; color: #ccc;">Bet Amount</label>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="number" id="point-input" min="1" max="${Math.floor(currentPoints)}" value="100" 
-                               style="flex: 1; padding: 14px 16px; border: 1px solid #333; border-radius: 10px; font-size: 18px; text-align: left; outline: none; background: #2a2a3e; color: white;">
-                        <button onclick="setMaxBet()" 
-                                style="background: transparent; color: #888; border: 1px solid #444; padding: 14px 18px; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer;">
-                            MAX
-                        </button>
-                    </div>
+                    <label style="display: block; margin-bottom: 10px; font-size: 14px;">Challenge Amount:</label>
+                    <input type="number" id="point-input" min="1" max="1000" value="10" 
+                           style="width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 18px; text-align: center; outline: none;">
                 </div>
                 
-                <button id="challenge-btn" onclick="startPointDoubleChallenge()" 
-                        style="width: 100%; background: #2ecc71; color: white; border: none; padding: 16px; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 15px; letter-spacing: 1px;">
-                    CHALLENGE
-                </button>
-                
-                <div id="result-text" style="margin-top: 20px; font-size: 16px; min-height: 24px;"></div>
-                
-                <button onclick="closePointDoubleModal()" 
-                        style="background: transparent; color: #666; border: none; padding: 10px; font-size: 14px; cursor: pointer; margin-top: 10px;">
-                    Close
-                </button>
+                <div style="margin-top: 25px;">
+                    <button id="challenge-btn" onclick="startPointDoubleChallenge()" 
+                            style="background: #ff6b6b; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-right: 10px;">
+                        Challenge
+                    </button>
+                    <button onclick="closePointDoubleModal()" 
+                            style="background: #6c757d; color: white; border: none; padding: 15px 20px; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                        Cancel
+                    </button>
+                </div>
             `;
             
             modalOverlay.appendChild(modalContent);
@@ -795,114 +736,54 @@
             }, 100);
         }
         
-        function setMaxBet() {
-            const currentPoints = Game.dailyRewards ? Game.dailyRewards.totalTokens : (parseFloat(localStorage.getItem('totalTokens')) || 0);
-            const input = document.getElementById('point-input');
-            if (input) {
-                input.value = Math.floor(currentPoints);
-            }
-        }
-        
         function startPointDoubleChallenge() {
             const pointInput = document.getElementById('point-input');
-            const challengeAmount = parseInt(pointInput.value) || 100;
-            const resultText = document.getElementById('result-text');
-            const challengeBtn = document.getElementById('challenge-btn');
-            
-            // Get current points
-            const currentPoints = Game.dailyRewards ? Game.dailyRewards.totalTokens : (parseFloat(localStorage.getItem('totalTokens')) || 0);
-            
-            // Check if player has enough points
-            if (challengeAmount > currentPoints) {
-                if (resultText) {
-                    resultText.style.color = '#e74c3c';
-                    resultText.textContent = 'Not enough points!';
-                }
-                return;
-            }
-            
-            if (challengeAmount <= 0) {
-                if (resultText) {
-                    resultText.style.color = '#e74c3c';
-                    resultText.textContent = 'Enter a valid amount!';
-                }
-                return;
-            }
+            const challengeAmount = parseInt(pointInput.value) || 10;
             
             console.log('=== PROCESSING POINT DOUBLE CHALLENGE ===');
             console.log('Challenge amount:', challengeAmount);
             
-            // Disable button during processing
-            if (challengeBtn) {
-                challengeBtn.disabled = true;
-                challengeBtn.textContent = '...';
-            }
+            // Close modal first
+            closePointDoubleModal();
             
             // Simulate the challenge result (50% chance to win)
             const won = Math.random() < 0.5;
+            let message;
             
+            if (won) {
+                const winAmount = challengeAmount * 2;
+                message = `🎉 WINNER! You won the Point Double Challenge!\\n\\n`;
+                message += `Challenge Amount: ${challengeAmount} points\\n`;
+                message += `You WON: ${winAmount} points!`;
+                
+                // Add the won points to user's total
+                if (typeof DailyReward !== 'undefined') {
+                    DailyReward.totalTokens += winAmount;
+                    localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
+                }
+            } else {
+                message = `😞 You lost the Point Double Challenge.\\n\\n`;
+                message += `Challenge Amount: ${challengeAmount} points\\n`;
+                message += `You LOST: ${challengeAmount} points.\\n`;
+                message += `Better luck next time!`;
+                
+                // Deduct the challenge amount (they lost the bet)
+                if (typeof DailyReward !== 'undefined') {
+                    DailyReward.totalTokens = Math.max(0, DailyReward.totalTokens - challengeAmount);
+                    localStorage.setItem('totalTokens', DailyReward.totalTokens.toString());
+                }
+            }
+            
+            // Show result and stay on main page
             setTimeout(() => {
-                if (won) {
-                    const winAmount = challengeAmount; // Win the same amount (double total)
-                    
-                    // Add the won points to user's total
-                    if (Game.dailyRewards) {
-                        Game.dailyRewards.totalTokens += winAmount;
-                        localStorage.setItem('totalTokens', Game.dailyRewards.totalTokens.toString());
-                    }
-                    
-                    // Show win result in modal
-                    if (resultText) {
-                        resultText.style.color = '#2ecc71';
-                        resultText.textContent = `You Win!  +${winAmount} P`;
-                    }
-                    
-                    console.log(`🎉 WON: +${winAmount} points`);
-                } else {
-                    // Deduct the challenge amount (they lost the bet)
-                    if (Game.dailyRewards) {
-                        Game.dailyRewards.totalTokens = Math.max(0, Game.dailyRewards.totalTokens - challengeAmount);
-                        localStorage.setItem('totalTokens', Game.dailyRewards.totalTokens.toString());
-                    }
-                    
-                    // Show loss result in modal
-                    if (resultText) {
-                        resultText.style.color = '#e74c3c';
-                        resultText.textContent = `You Lost  -${challengeAmount} P`;
-                    }
-                    
-                    console.log(`😞 LOST: -${challengeAmount} points`);
-                }
-                
-                // Update current points display in modal
-                const newPoints = Game.dailyRewards ? Game.dailyRewards.totalTokens : (parseFloat(localStorage.getItem('totalTokens')) || 0);
-                const modalContent = document.getElementById('point-double-content');
-                if (modalContent) {
-                    const subtitleEl = modalContent.querySelector('p');
-                    if (subtitleEl) {
-                        subtitleEl.textContent = `Current Points: ${newPoints.toLocaleString()} P`;
-                    }
-                }
-                
-                // Update header points display
-                const tokenDisplay = document.getElementById('token-balance');
-                if (tokenDisplay) {
-                    tokenDisplay.textContent = Math.round(newPoints) + ' P';
-                }
-                
-                // Re-enable button
-                if (challengeBtn) {
-                    challengeBtn.disabled = false;
-                    challengeBtn.textContent = 'CHALLENGE';
-                }
-                
+                alert(message);
                 // Update points display if available
                 if (typeof updatePointsDisplay === 'function') {
                     updatePointsDisplay();
                 }
             }, 500);
             
-            console.log('Point Double challenge completed');
+            console.log('Point Double challenge completed - staying on main page');
         }
         
         function closePointDoubleModal() {

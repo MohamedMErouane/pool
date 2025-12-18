@@ -1337,3 +1337,138 @@ html, body {
         font-size: 18px;
     }
 }
+
+/* Point Double Up Overlay Styles */
+.point-double-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    max-height: 80vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 2px solid #4a9eff;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    color: white;
+    z-index: 1000;
+    display: none;
+    overflow-y: auto;
+}
+
+.overlay-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: rgba(74, 158, 255, 0.1);
+    border-bottom: 1px solid #4a9eff;
+    border-radius: 13px 13px 0 0;
+}
+
+.overlay-header h2 {
+    margin: 0;
+    font-size: 18px;
+    color: #4a9eff;
+}
+
+.overlay-content {
+    padding: 20px;
+}
+
+.overlay-content .card {
+    background: #1f2937;
+    color: #f9fafb;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.overlay-content .title {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.overlay-content .subtitle {
+    font-size: 13px;
+    text-align: center;
+    color: #9ca3af;
+    margin-bottom: 16px;
+}
+
+.overlay-content .current-points {
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.overlay-content .label {
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+.overlay-content .input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.overlay-content input[type="number"] {
+    flex: 1;
+    padding: 8px;
+    border-radius: 8px;
+    border: 1px solid #4b5563;
+    background: #111827;
+    color: #f9fafb;
+    box-sizing: border-box;
+}
+
+.overlay-content button {
+    cursor: pointer;
+    border: none;
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.overlay-content .btn-max {
+    background: #374151;
+    color: #e5e7eb;
+}
+
+.overlay-content .btn-challenge {
+    width: 100%;
+    padding: 10px 0;
+    background: #10b981;
+    color: #022c22;
+    margin-bottom: 12px;
+}
+
+.overlay-content .btn-challenge:disabled {
+    background: #4b5563;
+    cursor: not-allowed;
+}
+
+.overlay-content .result {
+    font-size: 13px;
+    min-height: 18px;
+}
+
+.overlay-content .result.win {
+    color: #6ee7b7;
+}
+
+.overlay-content .result.lose {
+    color: #fca5a5;
+}
+
+.overlay-content .error {
+    color: #f97373;
+    font-size: 12px;
+    min-height: 16px;
+    margin-top: 4px;
+}

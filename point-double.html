@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Point Double Up</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111827;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .card {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+            width: 320px;
+            box-sizing: border-box;
+        }
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+        .subtitle {
+            font-size: 13px;
+            text-align: center;
+            color: #9ca3af;
+            margin-bottom: 16px;
+        }
+        .current-points {
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .label {
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        .input-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        input[type="number"] {
+            flex: 1;
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #4b5563;
+            background: #111827;
+            color: #f9fafb;
+            box-sizing: border-box;
+        }
+        button {
+            cursor: pointer;
+            border: none;
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .btn-max {
+            background: #374151;
+            color: #e5e7eb;
+        }
+        .btn-challenge {
+            width: 100%;
+            padding: 10px 0;
+            background: #10b981;
+            color: #022c22;
+            margin-bottom: 12px;
+        }
+        .btn-challenge:disabled {
+            background: #4b5563;
+            cursor: not-allowed;
+        }
+        .result {
+            font-size: 13px;
+            min-height: 18px;
+        }
+        .result.win {
+            color: #6ee7b7;
+        }
+        .result.lose {
+            color: #fca5a5;
+        }
+        .error {
+            color: #f97373;
+            font-size: 12px;
+            min-height: 16px;
+            margin-top: 4px;
+        }
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #374151;
+            color: #e5e7eb;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <button class="back-btn" onclick="window.history.back()">← Back</button>
+    <div class="card">
+        <div class="title">Point Double Up</div>
+        <div class="subtitle">Enter points & tap Challenge</div>
+        <div class="current-points">
+            Current Points: <span id="currentPoints">1000</span> P
+        </div>
+        <div class="label">Bet Amount</div>
+        <div class="input-row">
+            <input id="betInput" type="number" min="1" placeholder="Enter points">
+            <button class="btn-max" id="btnMax">MAX</button>
+        </div>
+        <div class="error" id="errorMsg"></div>
+        <button class="btn-challenge" id="btnChallenge">CHALLENGE</button>
+        <div class="result" id="resultText"></div>
+    </div>
+    <script>
+        let currentPoints = 1000;
+        const currentPointsEl = document.getElementById('currentPoints');
+        const betInput = document.getElementById('betInput');
+        const btnMax = document.getElementById('btnMax');
+        const btnChallenge = document.getElementById('btnChallenge');
+        const resultText = document.getElementById('resultText');
+        const errorMsg = document.getElementById('errorMsg');
+
+        function loadPoints() {
+            currentPoints = parseFloat(localStorage.getItem('totalTokens')) || 0;
+            updatePointsDisplay();
+        }
+
+        function savePoints() {
+            localStorage.setItem('totalTokens', currentPoints.toString());
+        }
+
+        function updatePointsDisplay() {
+            currentPointsEl.textContent = Math.floor(currentPoints).toLocaleString();
+        }
+
+        btnMax.addEventListener('click', () => {
+            betInput.value = Math.floor(currentPoints);
+            errorMsg.textContent = '';
+        });
+
+        btnChallenge.addEventListener('click', () => {
+            const bet = parseInt(betInput.value, 10);
+            if (isNaN(bet) || bet <= 0) {
+                errorMsg.textContent = 'Please enter a valid amount.';
+                return;
+            }
+            if (bet > currentPoints) {
+                errorMsg.textContent = 'You cannot bet more than your balance.';
+                return;
+            }
+            errorMsg.textContent = '';
+            btnChallenge.disabled = true;
+            const isWin = Math.random() < 0.5;
+            if (isWin) {
+                currentPoints += bet;
+                resultText.textContent = `You Win! +${bet.toLocaleString()} P`;
+                resultText.className = 'result win';
+            } else {
+                currentPoints -= bet;
+                resultText.textContent = `You Lose... -${bet.toLocaleString()} P`;
+                resultText.className = 'result lose';
+            }
+            savePoints();
+            updatePointsDisplay();
+            betInput.value = '';
+            setTimeout(() => {
+                btnChallenge.disabled = false;
+            }, 300);
+        });
+
+        // Load points on page load
+        loadPoints();
+    </script>
+</body>
+</html></content>

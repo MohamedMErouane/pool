@@ -152,9 +152,26 @@ Game_Singleton.prototype.startBreakGame = function(){
 Game_Singleton.prototype.startAimShootGame = function(){
     Canvas2D._canvas.style.cursor = "auto";
 
-    // COOLDOWN DISABLED: No wait time for Aim & Shoot
-    // Reset shots counter each time to allow unlimited play
-    localStorage.setItem('aimShootShots', '0');
+    // CLIENT SPECIFICATION: Check if player has attempts left and 5-minute cooldown
+    const now = Date.now();
+    const aimShootLastPlayed = parseInt(localStorage.getItem('aimShootLastPlayed') || '0');
+    const aimShootShots = parseInt(localStorage.getItem('aimShootShots') || '0');
+    const fiveMinutesInMs = 5 * 60 * 1000; // 5 minutes
+    
+    // Check if 5 minutes have passed since last completion
+    const timeSinceLastPlay = now - aimShootLastPlayed;
+    
+    if (aimShootShots >= 3 && timeSinceLastPlay < fiveMinutesInMs) {
+        // Show 5-minute cooldown message
+        const remainingTime = Math.ceil((fiveMinutesInMs - timeSinceLastPlay) / 1000 / 60);
+        this.show5MinuteMessage(remainingTime);
+        return;
+    }
+    
+    // Reset shots if 5 minutes have passed
+    if (timeSinceLastPlay >= fiveMinutesInMs) {
+        localStorage.setItem('aimShootShots', '0');
+    }
 
     // Ensure sound is enabled for aim shoot mode
     Game.sound = true;
