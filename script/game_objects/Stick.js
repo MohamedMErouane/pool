@@ -56,28 +56,18 @@ Stick.prototype.handleInput = function (delta) {
       var stick = this;
       setTimeout(function(){stick.visible = false;}, 500);
       
-      // SUPER SIMPLE BALL FORCING - EXACTLY AS YOU REQUESTED!
+      // BALL FORCING - Skip for Daily Break (animation handled by GameWorld.forceBallIntoPocket)
       setTimeout(function() {
+        // Skip instant forcing for Daily Break - let the animation play instead
+        if (localStorage.getItem('dailyBreakMode') === 'true') {
+          console.log("🎬 Daily Break: Skipping instant force - using animated ball rolling");
+          return; // Let GameWorld.forceDailyBreakBalls handle the animation
+        }
+        
         console.log("🎯 FORCING BALLS NOW!");
         
         // Check if we're in mini-game - force balls!
-        if (currentMiniGame && currentMiniGame.type === 'dailyBreak') {
-          // DAILY BREAK: Force 2-5 balls
-          var ballsToForce = 2 + Math.floor(Math.random() * 4); // 2-5 balls
-          var forced = 0;
-          
-          for (var i = 1; i < Game.gameWorld.balls.length && forced < ballsToForce; i++) {
-            var ball = Game.gameWorld.balls[i];
-            if (ball && !ball.inHole && ball.visible) {
-              ball.inHole = true;
-              ball.visible = false;
-              forced++;
-              console.log("✅ FORCED BALL " + forced);
-            }
-          }
-          console.log("🎉 DAILY BREAK: " + forced + " balls forced!");
-          
-        } else if (currentMiniGame && currentMiniGame.type === 'aimShoot') {
+        if (currentMiniGame && currentMiniGame.type === 'aimShoot') {
           // AIM SHOOT: Force black ball (or any ball)
           for (var i = 0; i < Game.gameWorld.balls.length; i++) {
             var ball = Game.gameWorld.balls[i];

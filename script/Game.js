@@ -271,10 +271,15 @@ Game_Singleton.prototype.mainLoop = function () {
         Game.gameWorld.handleInput(DELTA);
         Game.gameWorld.update(DELTA);
         
-        // SUPER AGGRESSIVE BALL FORCING - CHECK EVERY FRAME
+        // BALL FORCING - Skip for Daily Break (animation handled by GameWorld.forceBallIntoPocket)
         if (Game.gameWorld) {
-          // Daily Break forcing
-          if (Game.gameWorld.isBreakMode) {
+          // Daily Break uses animated ball rolling - skip instant forcing
+          if (Game.gameWorld.isBreakMode && localStorage.getItem('dailyBreakMode') === 'true') {
+            // Let GameWorld.forceDailyBreakBalls handle the animation
+            // Don't call forceBreakBallsInMainLoop - it would hide balls instantly
+          }
+          // Only use instant forcing for non-Daily Break modes
+          else if (Game.gameWorld.isBreakMode) {
             let ballsMoving = false;
             for (let i = 0; i < Game.gameWorld.balls.length; i++) {
               if (Game.gameWorld.balls[i] && Game.gameWorld.balls[i].velocity && 

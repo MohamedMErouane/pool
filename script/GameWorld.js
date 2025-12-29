@@ -537,9 +537,10 @@ GameWorld.prototype.handleInput = function (delta) {
             this.stick.shot = false; // Prevent normal shot logic
 
             // Complete the break after balls have time to roll into pockets
+            // Animation speed: 8 pixels/frame at 30fps = ~240 pixels/sec
             setTimeout(() => {
                 this.handleBreakComplete();
-            }, 3500); // 3.5 seconds for balls to animate into pockets
+            }, 6000); // 6 seconds for balls to animate into pockets
 
             return; // Bypass normal input handling
         }
@@ -656,7 +657,8 @@ GameWorld.prototype.ballsMoving = function(){
     var ballsMoving = false;
 
     for (var i = 0 ; i < this.balls.length; i++) {
-        if(this.balls[i].moving){
+        // Consider balls being forced as moving (for Daily Break animation)
+        if(this.balls[i].moving || this.balls[i].isBeingForced){
             ballsMoving = true;
         }
     }
@@ -667,6 +669,10 @@ GameWorld.prototype.ballsMoving = function(){
 GameWorld.prototype.handleCollision = function(ball1, ball2, delta){
 
     if(ball1.inHole || ball2.inHole)
+        return;
+
+    // Skip collision for balls being forced into pockets (Daily Break animation)
+    if(ball1.isBeingForced || ball2.isBeingForced)
         return;
 
     if(!ball1.moving && !ball2.moving)
@@ -694,12 +700,13 @@ GameWorld.prototype.handleCollision = function(ball1, ball2, delta){
             const ballsForced = this.forceDailyBreakBalls();
             console.log("✅ Balls rolling to pockets:", ballsForced);
             
-            // REQUIREMENT #1: Wait longer for slow animation - balls fully drop before showing result
-            // Increased from 3500ms to 5000ms to allow slower ball movement
+            // Wait for ball animations to complete before showing result
+            // Animation speed: 8 pixels/frame at 30fps = ~240 pixels/sec
+            // Max distance across table: ~1300 pixels = ~5.5 seconds max
             setTimeout(() => {
                 console.log("⏰ Completing break after ball animation...");
                 this.handleBreakComplete();
-            }, 5000); // Increased from 3500ms for slow mode visibility
+            }, 6000);
         }
     }
 
@@ -1207,11 +1214,11 @@ GameWorld.prototype.forceBallIntoPocket = function(ball) {
     // Find NEAREST pocket (like aim-shoot mode does)
     let nearestPocket = pockets[0];
     let minDistance = Infinity;
-    const ballPos = ball.position;
+    const startPos = { x: ball.position.x, y: ball.position.y };
     
     for (let i = 0; i < pockets.length; i++) {
-        const dx = pockets[i].x - ballPos.x;
-        const dy = pockets[i].y - ballPos.y;
+        const dx = pockets[i].x - startPos.x;
+        const dy = pockets[i].y - startPos.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
         if (distance < minDistance) {
@@ -1222,65 +1229,94 @@ GameWorld.prototype.forceBallIntoPocket = function(ball) {
     
     console.log(`🎯 Ball will roll to NEAREST pocket: (${nearestPocket.x}, ${nearestPocket.y})`);
     console.log(`📏 Distance: ${minDistance.toFixed(0)} pixels`);
+    console.log(`⚡ Ball starting from (${startPos.x.toFixed(0)}, ${startPos.y.toFixed(0)})`);
     
-    // Calculate direction to pocket
-    const dx = nearestPocket.x - ballPos.x;
-    const dy = nearestPocket.y - ballPos.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    // REQUIREMENT #2: Slow down the ball movement for better visibility (like aim-shoot mode)
-    const rollSpeed = 125; // Reduced from 250 for slower, more visible animation
-    const directionX = (dx / distance) * rollSpeed;
-    const directionY = (dy / distance) * rollSpeed;
-    
-    // Set ball properties for forcing
-    ball.isBeingForced = true; // Prevents friction from stopping the ball
-    ball.velocity = new Vector2(directionX, directionY);
+    // Mark ball as being forced - bypasses physics (friction, wall collision, ball collision)
+    ball.isBeingForced = true;
     ball.moving = true;
     ball.visible = true;
     ball.inHole = false;
-    
-    // Store target pocket for monitoring
-    ball.targetPocket = nearestPocket;
-    
-    console.log(`⚡ Ball rolling from (${ballPos.x.toFixed(0)}, ${ballPos.y.toFixed(0)}) to pocket`);
-    console.log(`   Velocity: (${directionX.toFixed(0)}, ${directionY.toFixed(0)})`);
+    ball.velocity = Vector2.zero; // Clear velocity - we use direct position updates
     
     // Store reference for interval
     const self = this;
-    let checkCount = 0;
-    const maxChecks = 240; // 8 seconds max (increased from 120 for slower mode)
+    let frameCount = 0;
     
-    // Monitor ball and pocket it when it gets close
-    const monitorInterval = setInterval(function() {
+    // SMOOTH ANIMATION: Move ball directly toward pocket using position updates
+    // Speed: 8 pixels per frame at 30fps = ~240 pixels/second (fast enough to see, not too slow)
+    const speed = 8;
+    
+    const animationInterval = setInterval(function() {
         // Safety check - ball already pocketed or doesn't exist
         if (!ball || ball.inHole) {
-            clearInterval(monitorInterval);
-            ball.isBeingForced = false;
+            clearInterval(animationInterval);
+            if (ball) ball.isBeingForced = false;
             return;
         }
         
-        checkCount++;
+        // Keep ball visible and marked as being forced during animation
+        ball.visible = true;
+        ball.isBeingForced = true;
+        
+        frameCount++;
         
         // Calculate current distance to target pocket
         const currentDx = nearestPocket.x - ball.position.x;
         const currentDy = nearestPocket.y - ball.position.y;
         const currentDistance = Math.sqrt(currentDx * currentDx + currentDy * currentDy);
         
-        // Re-aim toward pocket if ball drifted
-        if (checkCount % 5 === 0 && currentDistance > 50) {
-            const newDx = (currentDx / currentDistance) * rollSpeed;
-            const newDy = (currentDy / currentDistance) * rollSpeed;
-            ball.velocity = new Vector2(newDx, newDy);
+        // If close enough to pocket, pocket the ball with animation
+        if (currentDistance < 20) {
+            clearInterval(animationInterval);
+            
+            // Move ball to pocket position for visual effect
+            ball.position = new Vector2(nearestPocket.x, nearestPocket.y);
+            
+            // Short delay to show ball at pocket before disappearing
+            setTimeout(function() {
+                ball.inHole = true;
+                ball.visible = false;
+                ball.moving = false;
+                ball.isBeingForced = false;
+                ball.velocity = Vector2.zero;
+                
+                self.ballsPocketedInBreak++;
+                
+                console.log("✅✅ Ball rolled into pocket! Total pocketed:", self.ballsPocketedInBreak);
+                
+                // Play hole sound
+                if (Game.sound && SOUND_ON && typeof sounds !== 'undefined' && sounds.hole) {
+                    try {
+                        const holeSound = sounds.hole.cloneNode(true);
+                        holeSound.volume = 0.7;
+                        holeSound.play();
+                    } catch (e) {
+                        console.log("Sound play error:", e);
+                    }
+                }
+            }, 100); // 100ms delay to see ball at pocket
+            
+            return;
         }
         
-        // If close enough or timeout, pocket the ball
-        if (currentDistance < 45 || checkCount >= maxChecks) {
-            clearInterval(monitorInterval);
+        // DIRECT POSITION UPDATE: Move ball toward pocket (bypasses all physics)
+        const stepX = (currentDx / currentDistance) * speed;
+        const stepY = (currentDy / currentDistance) * speed;
+        
+        ball.position = new Vector2(
+            ball.position.x + stepX,
+            ball.position.y + stepY
+        );
+        
+        // Set velocity for visual effect (ball drawing may use this)
+        ball.velocity = new Vector2(stepX * 30, stepY * 30);
+        
+        // Safety timeout: If animation takes too long (10 seconds), force pocket
+        if (frameCount > 300) {
+            clearInterval(animationInterval);
+            console.log("⚠️ Animation timeout - forcing ball into pocket");
             
-            // Pocket the ball
-            ball.position.x = nearestPocket.x;
-            ball.position.y = nearestPocket.y;
+            ball.position = new Vector2(nearestPocket.x, nearestPocket.y);
             ball.inHole = true;
             ball.visible = false;
             ball.moving = false;
@@ -1289,18 +1325,16 @@ GameWorld.prototype.forceBallIntoPocket = function(ball) {
             
             self.ballsPocketedInBreak++;
             
-            console.log("✅✅ Ball rolled into pocket! Total pocketed:", self.ballsPocketedInBreak);
-            
             // Play hole sound
             if (Game.sound && SOUND_ON && typeof sounds !== 'undefined' && sounds.hole) {
                 try {
-                    sounds.hole.currentTime = 0;
-                    sounds.hole.volume = 0.6;
-                    sounds.hole.play();
+                    const holeSound = sounds.hole.cloneNode(true);
+                    holeSound.volume = 0.7;
+                    holeSound.play();
                 } catch (e) {}
             }
         }
-    }, 33); // ~30fps check rate
+    }, 33); // ~30fps animation
 };
 
 GameWorld.prototype.analyzeBallsAfterBreak = function() {

@@ -89,7 +89,10 @@ GamePolicy.prototype.checkColisionValidity = function(ball1,ball2){
 }
 GamePolicy.prototype.handleBallInHole = function(ball){
 
-    setTimeout(function(){ball.out();}, 100);
+    // Skip instant ball.out() for Daily Break mode - animation handles visibility
+    if(localStorage.getItem('dailyBreakMode') !== 'true' || !ball.isBeingForced){
+        setTimeout(function(){ball.out();}, 100);
+    }
 
     let currentPlayer = this.players[this.turn];
     let secondPlayer = this.players[(this.turn+1)%2];

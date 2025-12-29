@@ -129,11 +129,26 @@ Ball.prototype.updatePosition = function(delta){
 
     if(!this.moving || this.inHole)
         return;
+    
+    // Skip normal physics for balls being forced into pockets (Daily Break animation)
+    if(this.isBeingForced)
+        return;
+    
     var ball = this;
     var newPos = this.position.add(this.velocity.multiply(delta));
 
 
 	if(Game.policy.isInsideHole(newPos)){
+        // DAILY BREAK MODE: Animate ball rolling into hole instead of instant disappear
+        if(localStorage.getItem('dailyBreakMode') === 'true' && ball !== Game.gameWorld.whiteBall){
+            console.log("🎱 Daily Break: Ball near hole - animating into pocket!");
+            // Use the animated forceBallIntoPocket instead of instant hide
+            if(Game.gameWorld && typeof Game.gameWorld.forceBallIntoPocket === 'function'){
+                Game.gameWorld.forceBallIntoPocket(ball);
+                return;
+            }
+        }
+        
         // Enhanced sound system with fallback and better audio handling
         if(Game.sound && SOUND_ON && sounds && sounds.hole){
             try {
@@ -175,6 +190,11 @@ Ball.prototype.updatePosition = function(delta){
 Ball.prototype.handleCollision = function(newPos){
 
 	var collision = false;
+
+	// Skip wall collision when ball is being forced into pocket (Daily Break animation)
+	if (this.isBeingForced) {
+		return false;
+	}
 
 	if(Game.policy.isXOutsideLeftBorder(newPos, this.origin)){
         this.velocity.x = -this.velocity.x;
