@@ -568,31 +568,39 @@ Game_Singleton.prototype.checkMiniGameCompletion = function() {
 Game_Singleton.prototype.completeDailyBreakAttempt = function() {
     // Calculate break score
     const ballsSpread = this.calculateBallSpread();
-    const ballsPotted = this.countPottedBalls();
+    
+    // Use ballsPocketedInBreak from GameWorld (more reliable than counting inHole)
+    const ballsPotted = this.gameWorld.ballsPocketedInBreak || this.countPottedBalls();
     const cueballScratch = this.gameWorld.whiteBall.inHole;
     
     const score = MiniGameSystem.evaluateBreakShot(ballsSpread, ballsPotted, cueballScratch);
     
     console.log("🎱 Daily Break attempt complete - Balls potted:", ballsPotted, "Score:", score);
     
-    // SHOW REWARD DISPLAY - Same as Aim Shoot style
+    // SHOW REWARD DISPLAY - Always show if we have balls potted
     if (this.gameWorld && ballsPotted > 0) {
-        // Calculate reward based on balls potted
-        const baseReward = ballsPotted * 50;
-        const bonusReward = Math.floor((ballsPotted * ballsPotted) * 10);
-        const totalReward = baseReward + bonusReward;
+        // Calculate reward: DOUBLE the balls scored (e.g., 4 balls = 8 points)
+        const totalReward = ballsPotted * 2;
         
-        console.log(`💰 Daily Break Reward: ${ballsPotted} balls = ${totalReward} points`);
+        console.log(`💰 Daily Break Reward: ${ballsPotted} balls x 2 = ${totalReward} points`);
         
         // Show the reward overlay using the same style as Aim Shoot
         this.gameWorld.showDailyBreakResult(ballsPotted, totalReward);
         
         // Delay completion to let player see reward
-        setTimeout(() => {
-            this.completeDailyBreakAttemptContinue(score);
+        const self = this;
+        setTimeout(function() {
+            self.completeDailyBreakAttemptContinue(score);
         }, 2500);
     } else {
-        this.completeDailyBreakAttemptContinue(score);
+        console.log("⚠️ No balls potted, showing result anyway with 0 balls");
+        // Still show the result even with 0 balls
+        this.gameWorld.showDailyBreakResult(0, 0);
+        
+        const self = this;
+        setTimeout(function() {
+            self.completeDailyBreakAttemptContinue(score);
+        }, 2000);
     }
 };
 

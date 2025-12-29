@@ -540,7 +540,7 @@ GameWorld.prototype.handleInput = function (delta) {
             // Animation speed: 8 pixels/frame at 30fps = ~240 pixels/sec
             setTimeout(() => {
                 this.handleBreakComplete();
-            }, 6000); // 6 seconds for balls to animate into pockets
+            }, 4000); // 4 seconds for balls to animate into pockets
 
             return; // Bypass normal input handling
         }
@@ -702,11 +702,10 @@ GameWorld.prototype.handleCollision = function(ball1, ball2, delta){
             
             // Wait for ball animations to complete before showing result
             // Animation speed: 8 pixels/frame at 30fps = ~240 pixels/sec
-            // Max distance across table: ~1300 pixels = ~5.5 seconds max
             setTimeout(() => {
                 console.log("⏰ Completing break after ball animation...");
                 this.handleBreakComplete();
-            }, 6000);
+            }, 4000);
         }
     }
 
@@ -926,6 +925,26 @@ GameWorld.prototype.handleBreakComplete = function() {
                 // Fallback to old behaviour
             }
         }, 1000); // Additional 1 second delay to see full animation
+        
+        return;
+    }
+    
+    // FALLBACK: If Daily Break but no Game.currentMiniGame, show result directly
+    if (isDailyBreak) {
+        console.log('🎯 Daily Break fallback - showing result directly');
+        const ballsScored = this.ballsPocketedInBreak || 0;
+        const pointsAwarded = ballsScored * 2; // Double the balls scored
+        
+        this.showDailyBreakResult(ballsScored, pointsAwarded);
+        
+        // Return to menu after showing result
+        const self = this;
+        setTimeout(function() {
+            self.reset();
+            Game.initMenus(false);
+            Game.mainMenu.active = true;
+            GAME_STOPPED = true;
+        }, 3000);
         
         return;
     }
@@ -1448,33 +1467,36 @@ GameWorld.prototype.detectBallClusters = function(ballPositions) {
 };
 
 GameWorld.prototype.showDailyBreakResult = function(ballsScored, pointsAwarded) {
-    console.log(`🎉 Showing Daily Break Result: ${ballsScored} balls = ${pointsAwarded} points`);
+    console.log(`🎉🎉🎉 showDailyBreakResult CALLED: ${ballsScored} balls = ${pointsAwarded} points`);
     
-    // Create overlay - MATCHING AIM SHOOT STYLE
+    // Remove any existing overlay first
+    const existingOverlay = document.getElementById('daily-break-result-overlay');
+    if (existingOverlay) {
+        existingOverlay.remove();
+    }
+    
+    // Create overlay - MATCHING AIM SHOOT STYLE EXACTLY
     const overlay = document.createElement('div');
     overlay.id = 'daily-break-result-overlay';
-    overlay.style.position = 'fixed';
-    overlay.style.top = '50%';
-    overlay.style.left = '50%';
-    overlay.style.transform = 'translate(-50%, -50%)';
-    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-    overlay.style.color = '#FFD700';
-    overlay.style.padding = '40px 60px';
-    overlay.style.borderRadius = '15px';
-    overlay.style.fontSize = '32px';
-    overlay.style.fontWeight = 'bold';
-    overlay.style.textAlign = 'center';
-    overlay.style.zIndex = '10000';
-    overlay.style.border = '3px solid #FFD700';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 99999;
+        text-align: center;
+    `;
     
+    // Match Aim Shoot style exactly
     overlay.innerHTML = `
-        <div style="font-size: 48px; margin-bottom: 20px;">🎱</div>
-        <div style="margin-bottom: 15px;">Balls Scored: ${ballsScored}</div>
-        <div style="font-size: 56px; color: #00FF00; margin: 20px 0;">+${pointsAwarded}</div>
-        <div style="font-size: 24px; color: #FFF;">Points Earned!</div>
+        <div style="background: rgba(26, 26, 46, 0.98); padding: 40px 60px; border-radius: 20px; box-shadow: 0 15px 50px rgba(0,0,0,0.9), 0 0 30px rgba(46, 204, 113, 0.3); border: 2px solid rgba(46, 204, 113, 0.5);">
+            <div style="font-size: 20px; color: #aaa; margin-bottom: 10px;">You scored ${ballsScored} ball${ballsScored !== 1 ? 's' : ''}</div>
+            <div style="font-size: 32px; font-weight: bold; color: #2ecc71; text-shadow: 0 0 20px rgba(46, 204, 113, 0.5);">You Win! +${pointsAwarded} P</div>
+        </div>
     `;
     
     document.body.appendChild(overlay);
+    console.log("✅ Overlay appended to body");
     
     // Get current total points for display
     const currentPoints = Game.dailyRewards ? Game.dailyRewards.totalTokens : (parseFloat(localStorage.getItem('totalTokens')) || 0);
