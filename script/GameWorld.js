@@ -320,12 +320,34 @@ GameWorld.prototype.forceBlackBallInHole = function() {
     const topBorderY    = (Game.policy && Game.policy.topBorderY)    || 57;
     const bottomBorderY = (Game.policy && Game.policy.bottomBorderY) || 768;
 
-    // Choose a random pocket for visual variety and fairness. Exclude last used pocket if available.
+    // Choose a random pocket with improved distribution (REQUIREMENT #2)
     const pockets = this.getTablePockets();
-    let lastPocketIndex = parseInt(localStorage.getItem('lastAimPocketIndex') || '-1');
-    let indices = pockets.map((p, i) => i);
-    if (lastPocketIndex >= 0 && indices.length > 1) indices = indices.filter(i => i !== lastPocketIndex);
-    const chosenIndex = indices[Math.floor(Math.random() * indices.length)];
+    
+    // Track pocket usage for even distribution
+    let pocketUsageStr = localStorage.getItem('aimShootPocketUsage') || '{}';
+    let pocketUsage = JSON.parse(pocketUsageStr);
+    
+    // Initialize usage count for all pockets if not exists
+    for (let i = 0; i < pockets.length; i++) {
+        if (pocketUsage[i] === undefined) {
+            pocketUsage[i] = 0;
+        }
+    }
+    
+    // Find the pocket(s) with minimum usage
+    const minUsage = Math.min(...Object.values(pocketUsage));
+    const leastUsedIndices = Object.keys(pocketUsage)
+        .filter(i => pocketUsage[i] === minUsage)
+        .map(i => parseInt(i));
+    
+    // Randomly select from least-used pockets for fair distribution
+    const chosenIndex = leastUsedIndices[Math.floor(Math.random() * leastUsedIndices.length)];
+    
+    // Update usage count
+    pocketUsage[chosenIndex]++;
+    localStorage.setItem('aimShootPocketUsage', JSON.stringify(pocketUsage));
+    localStorage.setItem('lastAimPocketIndex', chosenIndex.toString());
+    
     const targetPocket = pockets[chosenIndex];
 
     console.log(`🎯 BLACK BALL at (${targetBall.position.x.toFixed(0)}, ${targetBall.position.y.toFixed(0)})`);
@@ -373,7 +395,7 @@ GameWorld.prototype.forceBlackBallInHole = function() {
     
     // AGGRESSIVE FORCING: Move ball directly toward pocket every frame
     let checkCount = 0;
-    const maxChecks = 300; // 15 seconds max
+    const maxChecks = 600; // 30 seconds max (increased from 15 for slow mode viewing)
     
     const checkInterval = setInterval(() => {
         checkCount++;
@@ -430,19 +452,21 @@ GameWorld.prototype.forceBlackBallInHole = function() {
                 }
             }
             
-            // Trigger completion
+            // REQUIREMENT #1: Wait longer - Let ball fade out slowly before showing score
+            // Ball fully enters pocket, then we delay longer before score display (SLOW MODE)
             setTimeout(() => {
                 if (gameWorld.isAimShootMode) {
-                    console.log("🎯 Calling completeAimShootShot...");
+                    console.log("🎯 Ball fully entered - NOW showing score...");
                     gameWorld.completeAimShootShot();
                 }
-            }, 500);
+            }, 1500); // Increased from 500ms to 1500ms - allows slow visual of ball entering
             
             return;
         }
         
         // FORCE MOVEMENT: Directly update position toward current waypoint
-        const speed = 3; // Pixels per frame (50ms = 60 pixels/second)
+        // REQUIREMENT #3: Slow down the ball movement to allow proper viewing
+        const speed = 1.5; // Reduced from 3 to 1.5 pixels per frame (25 pixels/second - SLOWER for viewing)
         const stepX = (dx / distToWaypoint) * speed;
         const stepY = (dy / distToWaypoint) * speed;
         
@@ -466,17 +490,18 @@ GameWorld.prototype.forceBlackBallInHole = function() {
             console.log("⚠️ Max time reached, forcing ball into pocket NOW!");
             
             targetBall.isBeingForced = false;
-            targetBall.position = new Vector2(closestPocket.x, closestPocket.y);
+            targetBall.position = new Vector2(targetPocket.x, targetPocket.y);
             targetBall.inHole = true;
             targetBall.visible = false;
             targetBall.moving = false;
             targetBall.velocity = Vector2.zero;
             
+            // REQUIREMENT #3: Increased delay for slow mode (requirement #3)
             setTimeout(() => {
                 if (gameWorld.isAimShootMode) {
                     gameWorld.completeAimShootShot();
                 }
-            }, 500);
+            }, 1500); // Increased from 500ms to 1500ms
         }
     }, 50); // Every 50ms
 };
@@ -669,11 +694,12 @@ GameWorld.prototype.handleCollision = function(ball1, ball2, delta){
             const ballsForced = this.forceDailyBreakBalls();
             console.log("✅ Balls rolling to pockets:", ballsForced);
             
-            // Complete break after balls finish rolling (give them time to animate)
+            // REQUIREMENT #1: Wait longer for slow animation - balls fully drop before showing result
+            // Increased from 3500ms to 5000ms to allow slower ball movement
             setTimeout(() => {
                 console.log("⏰ Completing break after ball animation...");
                 this.handleBreakComplete();
-            }, 3500);
+            }, 5000); // Increased from 3500ms for slow mode visibility
         }
     }
 
@@ -883,12 +909,17 @@ GameWorld.prototype.handleBreakComplete = function() {
     // navigation (show attempt result -> continue -> next attempt) works correctly.
     if (isDailyBreak && typeof Game !== 'undefined' && Game.currentMiniGame && Game.currentMiniGame.isActive && Game.currentMiniGame.type === 'dailyBreak') {
         console.log('🎯 Delegating daily break completion to Game.completeDailyBreakAttempt()');
-        try {
-            Game.completeDailyBreakAttempt();
-        } catch (e) {
-            console.error('Error delegating daily break completion:', e);
-            // Fallback to old behaviour
-        }
+        
+        // REQUIREMENT #1: Add additional delay to show animation fully before results
+        setTimeout(() => {
+            try {
+                Game.completeDailyBreakAttempt();
+            } catch (e) {
+                console.error('Error delegating daily break completion:', e);
+                // Fallback to old behaviour
+            }
+        }, 1000); // Additional 1 second delay to see full animation
+        
         return;
     }
     
@@ -941,12 +972,9 @@ GameWorld.prototype.getTablePockets = function() {
 };
 
 GameWorld.prototype.forceDailyBreakBalls = function() {
-    // Prevent double-calling
-    if (this.dailyBreakBallsAlreadyForced) {
-        console.log("⚠️ Daily Break balls already forced, skipping...");
-        return 0;
-    }
-    this.dailyBreakBallsAlreadyForced = true;
+    // REQUIREMENT #3: Allow infinite testing - REMOVED the force flag check
+    // Removed: if (this.dailyBreakBallsAlreadyForced) check
+    // This allows players to test multiple times without restrictions
     
     console.log("🎲🎲🎲 FORCE DAILY BREAK BALLS CALLED! 🎲🎲🎲");
 
@@ -1200,8 +1228,8 @@ GameWorld.prototype.forceBallIntoPocket = function(ball) {
     const dy = nearestPocket.y - ballPos.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
     
-    // Normalize direction and set velocity for smooth rolling
-    const rollSpeed = 250; // Reasonable speed for visible animation
+    // REQUIREMENT #2: Slow down the ball movement for better visibility (like aim-shoot mode)
+    const rollSpeed = 125; // Reduced from 250 for slower, more visible animation
     const directionX = (dx / distance) * rollSpeed;
     const directionY = (dy / distance) * rollSpeed;
     
@@ -1221,7 +1249,7 @@ GameWorld.prototype.forceBallIntoPocket = function(ball) {
     // Store reference for interval
     const self = this;
     let checkCount = 0;
-    const maxChecks = 120; // 4 seconds max at 30fps check rate
+    const maxChecks = 240; // 8 seconds max (increased from 120 for slower mode)
     
     // Monitor ball and pocket it when it gets close
     const monitorInterval = setInterval(function() {
@@ -1388,85 +1416,35 @@ GameWorld.prototype.detectBallClusters = function(ballPositions) {
 GameWorld.prototype.showDailyBreakResult = function(ballsScored, pointsAwarded) {
     console.log(`🎉 Showing Daily Break Result: ${ballsScored} balls = ${pointsAwarded} points`);
     
+    // Create overlay - MATCHING AIM SHOOT STYLE
+    const overlay = document.createElement('div');
+    overlay.id = 'daily-break-result-overlay';
+    overlay.style.position = 'fixed';
+    overlay.style.top = '50%';
+    overlay.style.left = '50%';
+    overlay.style.transform = 'translate(-50%, -50%)';
+    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
+    overlay.style.color = '#FFD700';
+    overlay.style.padding = '40px 60px';
+    overlay.style.borderRadius = '15px';
+    overlay.style.fontSize = '32px';
+    overlay.style.fontWeight = 'bold';
+    overlay.style.textAlign = 'center';
+    overlay.style.zIndex = '10000';
+    overlay.style.border = '3px solid #FFD700';
+    
+    overlay.innerHTML = `
+        <div style="font-size: 48px; margin-bottom: 20px;">🎱</div>
+        <div style="margin-bottom: 15px;">Balls Scored: ${ballsScored}</div>
+        <div style="font-size: 56px; color: #00FF00; margin: 20px 0;">+${pointsAwarded}</div>
+        <div style="font-size: 24px; color: #FFF;">Points Earned!</div>
+    `;
+    
+    document.body.appendChild(overlay);
+    
     // Get current total points for display
     const currentPoints = Game.dailyRewards ? Game.dailyRewards.totalTokens : (parseFloat(localStorage.getItem('totalTokens')) || 0);
     const newTotal = currentPoints + pointsAwarded;
-    
-    // Create overlay - matches Point Double Up style
-    const overlay = document.createElement('div');
-    overlay.id = 'daily-break-result-overlay';
-    overlay.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(0, 0, 0, 0.85);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 99999;
-    `;
-    
-    // Create modal content - matches Point Double Up style
-    const content = document.createElement('div');
-    content.style.cssText = `
-        background: #1a1a2e;
-        padding: 30px 25px;
-        border-radius: 20px;
-        text-align: center;
-        color: white;
-        box-shadow: 0 25px 50px rgba(0,0,0,0.7);
-        max-width: 320px;
-        width: 90%;
-    `;
-    
-    content.innerHTML = `
-        <h2 style="margin: 0 0 8px 0; font-size: 22px; font-weight: bold; letter-spacing: 1px;">
-            DAILY BREAK
-        </h2>
-        <p style="margin: 0 0 25px 0; font-size: 14px; color: #888;">
-            Current Points: ${newTotal.toLocaleString()} P
-        </p>
-        <div style="margin: 20px 0;">
-            <div style="background: #2a2a3e; padding: 20px; border-radius: 10px; margin-bottom: 15px;">
-                <div style="font-size: 14px; color: #888; margin-bottom: 8px;">Balls Scored</div>
-                <div style="font-size: 36px; font-weight: bold; color: white;">${ballsScored}</div>
-            </div>
-        </div>
-        <div style="margin-top: 20px; font-size: 18px; min-height: 24px;">
-            <span style="color: #2ecc71; font-weight: bold;">You Win!  +${pointsAwarded} P</span>
-        </div>
-        <button id="daily-break-close-btn" style="
-            background: #2ecc71;
-            color: white;
-            border: none;
-            padding: 14px 40px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 20px;
-            letter-spacing: 1px;
-        ">
-            CONTINUE
-        </button>
-    `;
-    
-    overlay.appendChild(content);
-    document.body.appendChild(overlay);
-    
-    // Add click handler for close button
-    const closeBtn = document.getElementById('daily-break-close-btn');
-    if (closeBtn) {
-        closeBtn.onclick = function() {
-            if (overlay.parentNode) {
-                document.body.removeChild(overlay);
-            }
-            // Return to main screen
-            window.location.reload();
-        };
-    }
     
     // Add points to user's total
     console.log("💰 Adding points:", pointsAwarded);
@@ -1486,6 +1464,13 @@ GameWorld.prototype.showDailyBreakResult = function(ballsScored, pointsAwarded) 
     }
     
     console.log("✅ Points added. New total:", newTotal);
+    
+    // Remove overlay after delay
+    setTimeout(() => {
+        if (overlay.parentNode) {
+            document.body.removeChild(overlay);
+        }
+    }, 2400);
 };
 
 GameWorld.prototype.getDailyBreakMessage = function(ballsScored) {
@@ -1714,41 +1699,96 @@ GameWorld.prototype.showAimShoot5MinuteMessage = function() {
 GameWorld.prototype.resetAimShootForNextShot = function() {
     console.log("🔄 Resetting for next Aim & Shoot shot...");
     
-    // Reset game state
+    // Completely clear the game world first
+    if (Game.gameWorld) {
+        Game.gameWorld = null;
+    }
+    if (Game.policy) {
+        Game.policy = null;
+    }
+    
+    // Clear all flags on current instance
     this.isAimShootMode = false;
     this.miniGameActive = false;
     this.aimShootCompleted = false;
     this.aimShootTargetForced = false;
-    this.aimShootShotTriggered = false; // Reset shot trigger flag
+    this.aimShootShotTriggered = false;
+    this.ballsForced = false;
+    this.breakCompleted = false;
     
-    // Restart Aim & Shoot mode for next shot
+    // Wait for garbage collection then reinitialize
     setTimeout(() => {
-        if (typeof Game !== 'undefined' && Game.startAimShootGame) {
-            Game.startAimShootGame();
+        try {
+            console.log("🔧 Creating fresh Aim & Shoot instance...");
+            
+            // Create fresh Aim & Shoot mode instance
+            Game.gameWorld = new AimShootMode();
+            Game.policy = new GamePolicy();
+            
+            // Initialize proper state
+            Game.gameWorld.isAimShootMode = true;
+            Game.gameWorld.miniGameActive = true;
+            Game.gameWorld.aimShootCompleted = false;
+            Game.gameWorld.aimShootTargetForced = false;
+            Game.gameWorld.aimShootShotTriggered = false;
+            Game.gameWorld.breakCompleted = false;
+            
+            console.log("✅ Aim & Shoot mode reinitialized for next shot");
+        } catch (e) {
+            console.error("❌ Error reinitializing Aim & Shoot:", e);
+            console.error("Stack trace:", e.stack);
         }
-    }, 100);
+    }, 150);
 };
 
 GameWorld.prototype.returnToMainMenu = function() {
-    console.log("🏠 Returning to main menu...");
+    console.log("🏠 Returning to main menu - COMPLETE STATE RESET...");
     
-    // Reset all game state
+    // Reset ALL game state flags on THIS instance
     this.isAimShootMode = false;
+    this.isBreakMode = false;
     this.miniGameActive = false;
     this.aimShootCompleted = false;
     this.aimShootTargetForced = false;
-    this.aimShootShotTriggered = false; // Reset shot trigger flag
-    this.isBreakMode = false;
+    this.aimShootShotTriggered = false;
+    this.breakCompleted = false;
+    this.dailyBreakBallsAlreadyForced = false;
+    this.ballsForced = false;
     this.gameOver = false;
+    this.ballsPocketedInBreak = 0;
     
-    // Reset game
-    if (typeof Game !== 'undefined') {
-        Game.initMenus(false);
-        if (Game.mainMenu) {
-            Game.mainMenu.active = true;
+    // Clear localStorage flags
+    localStorage.setItem('dailyBreakMode', 'false');
+    
+    // CRITICAL: Stop the game loop FIRST
+    GAME_STOPPED = true;
+    
+    // Wait a frame to ensure game loop stops
+    setTimeout(() => {
+        try {
+            // Now completely disconnect from the game
+            if (typeof Game !== 'undefined') {
+                // Completely null out game world and policy
+                Game.gameWorld = null;
+                Game.policy = null;
+                Game.currentMiniGame = null;
+                
+                // Reset game state flags
+                DISPLAY = false;
+                AI_ON = false;
+                
+                // Initialize menus
+                Game.initMenus(false);
+                if (Game.mainMenu) {
+                    Game.mainMenu.active = true;
+                }
+                
+                console.log("✅ Main menu initialized - state cleaned and disconnected");
+            }
+        } catch (e) {
+            console.error("Error during menu return:", e);
         }
-        GAME_STOPPED = true;
-    }
+    }, 50);
 };
 
 GameWorld.prototype.showAimShootResult = function(ballsPotted, reward) {

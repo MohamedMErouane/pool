@@ -260,8 +260,14 @@ Game_Singleton.prototype.continueGame = function(){
 
 Game_Singleton.prototype.mainLoop = function () {
     
-
     if(DISPLAY && !GAME_STOPPED){
+        // Guard: Check if gameWorld is properly initialized
+        if (!Game.gameWorld) {
+            console.warn("⚠️ Game world not initialized, skipping frame");
+            requestAnimationFrame(Game.mainLoop);
+            return;
+        }
+        
         Game.gameWorld.handleInput(DELTA);
         Game.gameWorld.update(DELTA);
         
@@ -290,7 +296,14 @@ Game_Singleton.prototype.mainLoop = function () {
         }
         
         Canvas2D.clear();
-        Game.gameWorld.draw();
+        
+        // Guard: Check if draw method exists
+        if (Game.gameWorld && typeof Game.gameWorld.draw === 'function') {
+            Game.gameWorld.draw();
+        } else {
+            console.warn("⚠️ Game world draw method not available");
+        }
+        
         Mouse.reset();
         Game.handleInput();
         
@@ -304,10 +317,6 @@ Game_Singleton.prototype.mainLoop = function () {
 };
 
 // Mini-game functionality
-Game_Singleton.prototype.startMiniGame = function(type, gameData) {
-    GAME_STOPPED = true;
-};
-
 // MAIN LOOP BALL FORCING METHODS - ULTIMATE BACKUP
 Game_Singleton.prototype.forceBreakBallsInMainLoop = function() {
   console.log("🔥 MAIN LOOP: FORCING BREAK BALLS!");
@@ -384,36 +393,84 @@ Game_Singleton.prototype.startMiniGame = function(type, gameData) {
 };
 
 Game_Singleton.prototype.startDailyBreakGame = function(gameData) {
+    console.log("🎯 Starting Daily Break Game - Complete state reset");
+    
+    // CRITICAL: Stop any running game loop first
+    GAME_STOPPED = true;
+    
     // Disable AI for mini-games
     AI_ON = false;
     
-    // Setup break shot scenario
-    this.gameWorld = new GameWorld();
-    this.policy = new GamePolicy();
-    
-    // Position balls for break shot
-    for (let i = 0; i < gameData.balls.length; i++) {
-        if (i < this.gameWorld.balls.length - 1) { // Exclude white ball
-            this.gameWorld.balls[i].position = gameData.balls[i].position.copy();
-            this.gameWorld.balls[i].color = gameData.balls[i].color;
-        }
+    // CRITICAL: Clear all previous game state completely
+    if (this.gameWorld) {
+        this.gameWorld = null;
+        delete this.gameWorld;
+    }
+    if (this.policy) {
+        this.policy = null;
+        delete this.policy;
     }
     
-    // Position white ball for break shot
-    this.gameWorld.whiteBall.position = new Vector2(413, 413);
-    this.gameWorld.stick.position = this.gameWorld.whiteBall.position.copy();
+    // Clear any lingering Aim & Shoot state
+    localStorage.setItem('dailyBreakMode', 'false');
     
-    // Store initial ball positions for scoring
-    this.currentMiniGame.initialBallPositions = this.gameWorld.balls.map(ball => ball.position.copy());
-    this.currentMiniGame.shotTaken = false;
-    this.currentMiniGame.shotCompleted = false;
-    
-    // Add instructions overlay
-    this.showMiniGameInstructions("Daily Break Challenge", 
-        "Make the best break shot possible! You have " + (3 - gameData.currentAttempt) + " attempts remaining.");
-    
-    GAME_STOPPED = false;
-    requestAnimationFrame(Game.mainLoop);
+    // Wait 100ms to ensure previous state is fully cleared and garbage collected
+    setTimeout(() => {
+        try {
+            console.log("🔧 Creating fresh GameWorld for Daily Break...");
+            
+            // Setup break shot scenario with fresh instances
+            Game.gameWorld = new GameWorld();
+            Game.policy = new GamePolicy();
+            
+            if (!Game.gameWorld || !Game.policy) {
+                console.error("❌ Failed to create GameWorld or GamePolicy");
+                return;
+            }
+            
+            console.log("✅ GameWorld and GamePolicy created successfully");
+            
+            // CRITICAL: Reset all game state flags
+            Game.gameWorld.isBreakMode = false;
+            Game.gameWorld.isAimShootMode = false;
+            Game.gameWorld.miniGameActive = false;
+            Game.gameWorld.aimShootCompleted = false;
+            Game.gameWorld.aimShootTargetForced = false;
+            Game.gameWorld.aimShootShotTriggered = false;
+            Game.gameWorld.breakCompleted = false;
+            Game.gameWorld.dailyBreakBallsAlreadyForced = false;
+            Game.gameWorld.ballsForced = false;
+            
+            // Position balls for break shot
+            for (let i = 0; i < gameData.balls.length; i++) {
+                if (i < Game.gameWorld.balls.length - 1) { // Exclude white ball
+                    Game.gameWorld.balls[i].position = gameData.balls[i].position.copy();
+                    Game.gameWorld.balls[i].color = gameData.balls[i].color;
+                }
+            }
+            
+            // Position white ball for break shot
+            Game.gameWorld.whiteBall.position = new Vector2(413, 413);
+            Game.gameWorld.stick.position = Game.gameWorld.whiteBall.position.copy();
+            
+            // Store initial ball positions for scoring
+            Game.currentMiniGame.initialBallPositions = Game.gameWorld.balls.map(ball => ball.position.copy());
+            Game.currentMiniGame.shotTaken = false;
+            Game.currentMiniGame.shotCompleted = false;
+            
+            // Add instructions overlay
+            Game.showMiniGameInstructions("Daily Break Challenge", 
+                "Make the best break shot possible! You have " + (3 - gameData.currentAttempt) + " attempts remaining.");
+            
+            // NOW enable the game loop - last step
+            GAME_STOPPED = false;
+            console.log("✅ Daily Break Game initialized - starting main loop");
+            requestAnimationFrame(Game.mainLoop);
+        } catch (e) {
+            console.error("❌ ERROR initializing Daily Break:", e);
+            console.error("Stack:", e.stack);
+        }
+    }, 100);
 };
 
 Game_Singleton.prototype.startPowerShotGame = function(gameData) {
@@ -511,6 +568,30 @@ Game_Singleton.prototype.completeDailyBreakAttempt = function() {
     
     const score = MiniGameSystem.evaluateBreakShot(ballsSpread, ballsPotted, cueballScratch);
     
+    console.log("🎱 Daily Break attempt complete - Balls potted:", ballsPotted, "Score:", score);
+    
+    // SHOW REWARD DISPLAY - Same as Aim Shoot style
+    if (this.gameWorld && ballsPotted > 0) {
+        // Calculate reward based on balls potted
+        const baseReward = ballsPotted * 50;
+        const bonusReward = Math.floor((ballsPotted * ballsPotted) * 10);
+        const totalReward = baseReward + bonusReward;
+        
+        console.log(`💰 Daily Break Reward: ${ballsPotted} balls = ${totalReward} points`);
+        
+        // Show the reward overlay using the same style as Aim Shoot
+        this.gameWorld.showDailyBreakResult(ballsPotted, totalReward);
+        
+        // Delay completion to let player see reward
+        setTimeout(() => {
+            this.completeDailyBreakAttemptContinue(score);
+        }, 2500);
+    } else {
+        this.completeDailyBreakAttemptContinue(score);
+    }
+};
+
+Game_Singleton.prototype.completeDailyBreakAttemptContinue = function(score) {
     // Update attempt
     this.currentMiniGame.data.currentAttempt++;
     this.currentMiniGame.data.bestScore = Math.max(this.currentMiniGame.data.bestScore || 0, score);

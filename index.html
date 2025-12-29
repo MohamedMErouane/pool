@@ -884,11 +884,14 @@
             console.log('✅ GameWorld created:', !!Game.gameWorld);
             console.log('✅ GamePolicy created:', !!Game.policy);
             
-            // Set mini-game flags
+            // Set mini-game flags - DAILY BREAK does NOT use isBreakMode
+            // Daily Break uses normal game logic with dailyBreakMode localStorage flag
             if (currentMiniGame && currentMiniGame.type === 'dailyBreak') {
-                Game.gameWorld.isBreakMode = true;
+                // Daily Break is a regular game, NOT break mode
+                Game.gameWorld.isBreakMode = false;  // CRITICAL: Must be false!
                 Game.gameWorld.miniGameActive = true;
-                console.log('🔥 BREAK MODE ACTIVE');
+                localStorage.setItem('dailyBreakMode', 'true');
+                console.log('🎯 DAILY BREAK MODE ACTIVE (regular game with forced balls)');
             } else if (currentMiniGame && currentMiniGame.type === 'aimShoot') {
                 Game.gameWorld.isAimShootMode = true;
                 Game.gameWorld.miniGameActive = true;
