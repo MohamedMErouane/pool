@@ -216,6 +216,7 @@
                     this.forcingInterval = null; // Store interval ID
                     this.collisionDetected = false; // Track if collision has occurred
                     this.roundCompleted = false; // Track if round completion has been handled
+                    this.lastScoredPocket = null; // Track which pocket the ball went into
                     // Create comprehensive Game.policy for Ball.js compatibility
                     if (!Game.policy) {
                         Game.policy = {
@@ -390,7 +391,28 @@
                     if (this.blackBall.inHole && !wasInHole && !this.roundCompleted) {
                         console.log("🎯 BALL DETECTED IN HOLE - Triggering page refresh!");
                         this.roundCompleted = true; // Prevent multiple calls
-                        handleRoundComplete();
+                        
+                        // Find which pocket the ball went into
+                        let pocketPos = this.lastScoredPocket;
+                        if (!pocketPos) {
+                            const pockets = [
+                                {x: 70, y: 70}, {x: 720, y: 57}, {x: 1370, y: 70},
+                                {x: 70, y: 755}, {x: 720, y: 768}, {x: 1370, y: 755}
+                            ];
+                            pocketPos = pockets[0];
+                            let minDist = Infinity;
+                            for (let p of pockets) {
+                                const dist = Math.sqrt(
+                                    Math.pow(this.blackBall.position.x - p.x, 2) + 
+                                    Math.pow(this.blackBall.position.y - p.y, 2)
+                                );
+                                if (dist < minDist) {
+                                    minDist = dist;
+                                    pocketPos = p;
+                                }
+                            }
+                        }
+                        handleRoundComplete(pocketPos);
                     }
                 };
                 
@@ -679,8 +701,11 @@
                             self.collisionDetected = false; // Reset collision flag
                             self.roundCompleted = true; // Mark as completed to prevent duplicate calls
                             
+                            // Store the pocket position for UI display
+                            self.lastScoredPocket = nearestPocket;
+                            
                             // Increment round counter and handle page refresh
-                            handleRoundComplete();
+                            handleRoundComplete(nearestPocket);
                             
                             return;
                         }
@@ -744,8 +769,8 @@
                     return pointRewards[0]; // Default fallback
                 }
                 
-                function showWinOverlay(points) {
-                    console.log(`🎉 showWinOverlay called with ${points} points`);
+                function showWinOverlay(points, pocketPosition) {
+                    console.log(`🎉 showWinOverlay called with ${points} points at pocket:`, pocketPosition);
                     
                     const overlay = document.getElementById('win-overlay');
                     const winText = document.getElementById('win-text');
@@ -753,6 +778,38 @@
                     if (overlay && winText) {
                         // Update text
                         winText.textContent = `You Win!  +${points} P`;
+                        
+                        // Position the overlay at the pocket location
+                        if (pocketPosition) {
+                            // Get the game area for positioning context
+                            const gameArea = document.getElementById('gameArea');
+                            const canvas = document.getElementById('screen');
+                            
+                            if (gameArea && canvas) {
+                                // Calculate screen position from game coordinates
+                                const scaleX = canvas.offsetWidth / 1440;
+                                const scaleY = canvas.offsetHeight / 825;
+                                
+                                const screenX = pocketPosition.x * scaleX;
+                                const screenY = pocketPosition.y * scaleY;
+                                
+                                // Determine if this is a top or bottom pocket
+                                const isTopPocket = pocketPosition.y < 400;
+                                
+                                // Position overlay: above bottom pockets, below top pockets
+                                overlay.style.left = screenX + 'px';
+                                
+                                if (isTopPocket) {
+                                    // Show below top pockets
+                                    overlay.style.top = (screenY + 80) + 'px';
+                                } else {
+                                    // Show above bottom pockets
+                                    overlay.style.top = (screenY - 80) + 'px';
+                                }
+                                
+                                console.log(`📍 Overlay positioned at screen: (${screenX.toFixed(0)}, ${overlay.style.top})`);
+                            }
+                        }
                         
                         // Show overlay by adding the 'show' class
                         overlay.classList.add('show');
@@ -780,8 +837,9 @@
                     return currentTotal;
                 }
                 
-                function handleRoundComplete() {
+                function handleRoundComplete(pocketPosition) {
                     console.log('🎯🎯🎯 handleRoundComplete() CALLED! 🎯🎯🎯');
+                    console.log('📍 Pocket position:', pocketPosition);
                     
                     // Prevent multiple calls
                     if (refreshScheduled) {
@@ -807,8 +865,8 @@
                     addPointsToTotal(pointsWon);
                     console.log('💰 Points added to total');
                     
-                    showWinOverlay(pointsWon);
-                    console.log('📺 showWinOverlay called');
+                    showWinOverlay(pointsWon, pocketPosition);
+                    console.log('📺 showWinOverlay called with pocket position');
                     
                     console.log('⏰ Scheduling page refresh in 2.5 seconds...');
                     

@@ -439,7 +439,10 @@ GameWorld.prototype.forceBlackBallInHole = function() {
             targetBall.moving = false;
             targetBall.velocity = Vector2.zero;
             
-            console.log("✅✅✅ BLACK BALL SCORED - ENTERED HOLE!");
+            // Store the pocket position for reward display
+            gameWorld.lastScoredPocketPosition = { x: targetPocket.x, y: targetPocket.y };
+            
+            console.log("✅✅✅ BLACK BALL SCORED - ENTERED HOLE at pocket:", targetPocket.x, targetPocket.y);
             
             // Play hole sound
             if (Game.sound && SOUND_ON && typeof sounds !== 'undefined' && sounds.hole) {
@@ -1675,8 +1678,9 @@ GameWorld.prototype.completeAimShootShot = function() {
     console.log(`✅ Shot ${newShots}/3 completed! Reward: ${totalReward} points`);
     console.log(`📝 Updated localStorage - aimShootShots: ${newShots}`);
     
-    // Show points display (requirement #2)
-    this.showAimShootReward(totalReward, newShots);
+    // Show points display at the pocket where ball was scored (requirement #2)
+    const pocketPos = this.lastScoredPocketPosition || { x: 750, y: 400 };
+    this.showAimShootReward(totalReward, shotNumber, pocketPos);
     
     // Auto-reset after showing points - NO COOLDOWN
     setTimeout(() => {
@@ -1685,36 +1689,53 @@ GameWorld.prototype.completeAimShootShot = function() {
     }, 2500); // Show points for 2.5 seconds
 };
 
-GameWorld.prototype.showAimShootReward = function(points, shotNumber) {
-    console.log(`🎉 Displaying reward: ${points} points for shot ${shotNumber}/3`);
+GameWorld.prototype.showAimShootReward = function(points, shotNumber, pocketPos) {
+    console.log(`🎉 Displaying reward: ${points} points for shot ${shotNumber}/3 at pocket (${pocketPos.x}, ${pocketPos.y})`);
     
-    // Create reward overlay
+    // Get the game canvas to calculate position relative to screen
+    const canvas = document.getElementById('screen');
+    const canvasRect = canvas ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 1440, height: 825 };
+    
+    // Calculate screen position from game coordinates
+    // The canvas might be scaled, so we need to account for that
+    const scaleX = canvasRect.width / 1440;
+    const scaleY = canvasRect.height / 825;
+    
+    const screenX = canvasRect.left + (pocketPos.x * scaleX);
+    const screenY = canvasRect.top + (pocketPos.y * scaleY);
+    
+    // Create reward overlay at pocket position
     const overlay = document.createElement('div');
-    overlay.style.position = 'fixed';
-    overlay.style.top = '50%';
-    overlay.style.left = '50%';
-    overlay.style.transform = 'translate(-50%, -50%)';
-    overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.85)';
-    overlay.style.color = '#FFD700';
-    overlay.style.padding = '40px 60px';
-    overlay.style.borderRadius = '15px';
-    overlay.style.fontSize = '32px';
-    overlay.style.fontWeight = 'bold';
-    overlay.style.textAlign = 'center';
-    overlay.style.zIndex = '10000';
-    overlay.style.border = '3px solid #FFD700';
-    overlay.innerHTML = `
-        <div style="font-size: 48px; margin-bottom: 20px;">🎯</div>
-        <div style="margin-bottom: 15px;">Shot ${shotNumber}/3</div>
-        <div style="font-size: 56px; color: #00FF00; margin: 20px 0;">+${points}</div>
-        <div style="font-size: 24px; color: #FFF;">Points Earned!</div>
+    overlay.id = 'aim-shoot-reward-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        left: ${screenX}px;
+        top: ${screenY}px;
+        transform: translate(-50%, -50%);
+        z-index: 99999;
+        text-align: center;
+        pointer-events: none;
+        animation: popIn 0.3s ease-out;
     `;
     
-    document.body.appendChild(overlay);
+    overlay.innerHTML = `
+        <div style="background: rgba(26, 26, 46, 0.98); padding: 20px 30px; border-radius: 15px; box-shadow: 0 10px 40px rgba(0,0,0,0.9), 0 0 20px rgba(46, 204, 113, 0.4); border: 2px solid rgba(46, 204, 113, 0.6);">
+            <div style="font-size: 28px; font-weight: bold; color: #2ecc71; text-shadow: 0 0 15px rgba(46, 204, 113, 0.6);">You Win! +${points} P</div>
+        </div>
+    `;
     
-    // Remove overlay after delay
+    // Remove any existing overlay first
+    const existingOverlay = document.getElementById('aim-shoot-reward-overlay');
+    if (existingOverlay) existingOverlay.remove();
+    
+    document.body.appendChild(overlay);
+    console.log(`✅ Reward overlay displayed at pocket position: (${screenX.toFixed(0)}, ${screenY.toFixed(0)})`);
+    
+    // Remove after delay
     setTimeout(() => {
-        document.body.removeChild(overlay);
+        if (overlay.parentNode) {
+            overlay.remove();
+        }
     }, 2400);
 };
 
